@@ -18,18 +18,18 @@ export function upgradeCost(state: MissionState, id: ModuleId): number | null {
 function commonBlock(state: MissionState): string | null {
   if (state.status !== "playing") return "The mission is not in progress.";
   if (state.reportPending) return "Read the sol report first.";
-  if (state.pendingEvent) return "Answer Mission Control's decision first.";
-  if (state.actionsLeft <= 0) return "Only one engineering action per sol. Advance the sol to build again.";
+  if (state.pendingEvent) return "Answer the emergency first.";
+  if (state.actionsLeft <= 0) return "You already built today. Advance the sol to build again.";
   return null;
 }
 
 export function canUpgrade(state: MissionState, id: ModuleId): ActionCheck {
   const cost = upgradeCost(state, id);
-  if (cost === null) return { ok: false, reason: "Already at maximum level (3).", cost: 0 };
+  if (cost === null) return { ok: false, reason: "Already at the top level.", cost: 0 };
   const block = commonBlock(state);
   if (block) return { ok: false, reason: block, cost };
   if (state.resources.materials < cost)
-    return { ok: false, reason: `Needs ${cost} materials (you have ${state.resources.materials}).`, cost };
+    return { ok: false, reason: `Not enough materials. Needs ${cost}, you have ${state.resources.materials}.`, cost };
   return { ok: true, reason: null, cost };
 }
 
@@ -39,7 +39,7 @@ export function canRepair(state: MissionState, id: ModuleId): ActionCheck {
   const block = commonBlock(state);
   if (block) return { ok: false, reason: block, cost };
   if (state.resources.materials < cost)
-    return { ok: false, reason: `Needs ${cost} materials (you have ${state.resources.materials}).`, cost };
+    return { ok: false, reason: `Not enough materials. Needs ${cost}, you have ${state.resources.materials}.`, cost };
   return { ok: true, reason: null, cost };
 }
 

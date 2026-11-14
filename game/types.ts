@@ -1,5 +1,6 @@
 // Canonical types for LAIKA: MISSION RED PLANET.
 // All quantities are abstract game units — never NASA measurements.
+import type { Difficulty } from "./difficulty";
 
 export type ModuleId =
   | "habitat"
@@ -188,12 +189,22 @@ export interface TutorialState {
   v?: number;
 }
 
+/** A materials delivery from Mission Control. Recorded so it can never repeat. */
+export interface Delivery {
+  sol: number;
+  amount: number;
+  kind: "scheduled" | "emergency";
+}
+
 export interface MissionState {
   version: number;
   seed: number;
   /** Current PRNG state; saved so reloading never rerolls. */
   rng: number;
-  difficulty: "standard";
+  /** Chosen before the mission starts; never changes mid-mission. */
+  difficulty: Difficulty;
+  /** Every delivery received so far (finite: see game/difficulty.ts). */
+  deliveries: Delivery[];
   status: MissionStatus;
   sol: number;
   maxSols: number;

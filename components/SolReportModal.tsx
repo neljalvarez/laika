@@ -2,6 +2,8 @@
 
 import type { ResourceKey, SolReport } from "@/game/types";
 import { round1 } from "@/game/config";
+import { summarizeReport } from "@/game/summary";
+import type { Delivery } from "@/game/types";
 import { Modal } from "./Modal";
 import { WEATHER_TEXT } from "./ResourceHud";
 
@@ -31,6 +33,7 @@ export function SolReportModal({ report, preview = false, onClose, closeLabel, n
       title={preview ? `Preview of Sol ${report.sol} (nothing changes yet)` : `End of Sol ${report.sol} Report`}
       maxWidth={760}
       onClose={onClose}
+      backdropClose={preview}
       footer={
         <button type="button" className={`btn ${preview ? "btn-gray" : "btn-go"}`} onClick={onClose} data-autofocus>
           {closeLabel}
@@ -97,6 +100,71 @@ export function SolReportModal({ report, preview = false, onClose, closeLabel, n
           </ul>
         </div>
       )}
+    </Modal>
+  );
+}
+
+interface SummaryProps {
+  report: SolReport;
+  /** Materials that arrived for the sol now starting (already applied by the engine). */
+  deliveries: Delivery[];
+  continueLabel: string;
+  onContinue: () => void;
+  onFullReport: () => void;
+}
+
+/** Short end-of-sol summary: five real changes and the one most important message. */
+export function SolSummaryModal({ report, deliveries, continueLabel, onContinue, onFullReport }: SummaryProps) {
+  const headline = summarizeReport(report);
+  const delivered = deliveries.reduce((sum, d) => sum + d.amount, 0);
+  return (
+    <Modal
+      title={`Sol ${report.sol} report`}
+      maxWidth={440}
+      onClose={onContinue}
+      backdropClose={false}
+      footer={
+        <>
+          <button type="button" className="btn btn-gray" onClick={onFullReport}>
+            View full report
+          </button>
+          <button type="button" className="btn btn-go" onClick={onContinue} data-autofocus>
+            {continueLabel}
+          </button>
+        </>
+      }
+    >
+      <div data-testid="sol-summary">
+        <ul className="space-y-1">
+          {ROWS.map(({ key, label, goodWhenUp }) => {
+            const r = report.resources[key];
+            const delta = round1(r.after - r.before);
+            const good = delta === 0 ? null : delta > 0 === goodWhenUp;
+            return (
+              <li key={key} className="flex items-center justify-between gap-2 border-[2px] border-ink bg-white px-2 py-1" data-summary={key}>
+                <span className="font-extrabold uppercase">{label}</span>
+                <span
+                  className="tag tabular-nums"
+                  style={{ background: good === null ? "#fff" : good ? "#81C995" : "#F2CA76", fontSize: 14, minWidth: 64, textAlign: "center" }}
+                >
+                  {sign(delta)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p
+          className="mt-2 border-[3px] border-ink p-2 text-[15px] font-bold"
+          style={{ background: headline.tone === "bad" ? "#ED695B" : headline.tone === "warn" ? "#F2CA76" : "#81C995", color: headline.tone === "bad" ? "#fff" : "#2a1a22" }}
+        >
+          {headline.message}
+        </p>
+        {delivered > 0 && (
+          <p className="mt-2 border-[3px] border-ink bg-white p-2 text-[14px] font-bold" data-testid="delivery-note">
+            Supplies! Mission Control sent {delivered} materials{deliveries.some((d) => d.kind === "emergency") ? " (emergency supplies)" : ""}!
+          </p>
+        )}
+      </div>
     </Modal>
   );
 }

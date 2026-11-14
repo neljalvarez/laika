@@ -33,7 +33,7 @@ export function MissionEventModal({ state, dispatch }: { state: MissionState; di
         <div>
           <h2 className="h-pixel text-[18px]">{event.title}</h2>
           <p>{event.description}</p>
-          <p className="mt-1 text-[13px] font-bold">You must choose before the sol can continue.</p>
+          <p className="mt-1 text-[13px] font-bold">Pick one to continue.</p>
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
@@ -44,7 +44,6 @@ export function MissionEventModal({ state, dispatch }: { state: MissionState; di
               <h3 className="h-pixel text-[14px]">
                 {String.fromCharCode(65 + i)}. {choice.label}
               </h3>
-              <p className="text-[13px]">{choice.description}</p>
               <div className="my-1 flex flex-wrap gap-1">
                 {costTags(choice).map((t) => (
                   <span key={t} className={`tag ${t.startsWith("−") ? "tag-warn" : "tag-ok"}`}>
@@ -55,9 +54,13 @@ export function MissionEventModal({ state, dispatch }: { state: MissionState; di
               <p className="text-[13px]">
                 <strong>Now:</strong> {choice.nearTerm}
               </p>
-              <p className="mb-2 text-[13px]">
+              <p className="text-[13px]">
                 <strong>Later:</strong> {choice.future}
               </p>
+              <details className="mb-2 text-[12px]">
+                <summary className="cursor-pointer font-bold">What is this?</summary>
+                {choice.description}
+              </details>
               <div className="mt-auto">
                 {!afford.ok && (
                   <p className="mb-1 text-[12px] font-bold" role="note">

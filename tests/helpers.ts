@@ -1,12 +1,13 @@
 import { EVENTS } from "@/data/events";
 import { canAfford } from "@/game/events";
+import type { Difficulty } from "@/game/difficulty";
 import { createInitialState } from "@/game/initialState";
 import { missionReducer } from "@/game/reducer";
 import { canRepair, canUpgrade } from "@/game/upgrades";
 import { MODULE_IDS, type GameAction, type MissionState, type ModuleId } from "@/game/types";
 
-export function start(seed = 1957): MissionState {
-  return missionReducer(createInitialState(seed, false), { type: "BEGIN_MISSION" });
+export function start(seed = 1957, difficulty: Difficulty = "normal"): MissionState {
+  return missionReducer(createInitialState(seed, false, difficulty), { type: "BEGIN_MISSION" });
 }
 
 export function run(state: MissionState, ...actions: GameAction[]): MissionState {
@@ -29,8 +30,8 @@ function resolvePending(s: MissionState, strategy: Strategy): MissionState {
 
 const CAREFUL_ORDER: ModuleId[] = ["solar", "shelter", "lifeSupport", "greenhouse", "habitat", "battery"];
 
-export function playCampaign(seed: number, strategy: Strategy): MissionState {
-  let s = start(seed);
+export function playCampaign(seed: number, strategy: Strategy, difficulty: Difficulty = "normal"): MissionState {
+  let s = start(seed, difficulty);
   let guard = 0;
   while (s.status === "playing" && guard++ < 50) {
     s = resolvePending(s, strategy);

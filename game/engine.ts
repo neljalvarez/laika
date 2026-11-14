@@ -12,11 +12,13 @@
 //  9. Validate mission status (abort rules / final sol).
 // 10. Record the itemised report, then move to the next sol or end the campaign.
 import { CONFIG, clamp, conditionFactor, round1 } from "./config";
+import { difficultyOf } from "./difficulty";
 import { nextRandom } from "./rng";
 import { pickEvent } from "./events";
 import { computeScore, determineEnding } from "./scoring";
 import {
   MODULE_IDS,
+  type Delivery,
   type GreenhouseMode,
   type LogEntry,
   type MissionState,
@@ -418,7 +420,8 @@ export function advanceSol(state: MissionState): MissionState {
   const weather: Weather = next.forecast;
   const roll = nextRandom(rng);
   rng = roll.next;
-  let forecast: Weather = roll.value < CONFIG.dustyChance ? "DUSTY" : "CLEAR";
+  const diff = difficultyOf(state);
+  let forecast: Weather = roll.value < diff.dustyChance ? "DUSTY" : "CLEAR";
   if (stormLeft > 1) forecast = "STORM";
 
   next = {
@@ -430,6 +433,44 @@ export function advanceSol(state: MissionState): MissionState {
     stormSolsLeft: stormLeft,
     rng,
   };
+
+  // Finite Mission Control deliveries for the sol that is starting. They are
+  // recorded in state, so reloading or replaying can never grant them twice.
+  const newSol = next.sol;
+  const arrivals: Delivery[] = [];
+  for (const d of diff.deliveries) {
+    if (d.sol === newSol && !next.deliveries.some((x) => x.kind === "scheduled" && x.sol === d.sol)) {
+      arrivals.push({ sol: newSol, amount: d.amount, kind: "scheduled" });
+    }
+  }
+  const rescue = diff.emergencyResupply;
+  if (
+    rescue &&
+    arrivals.length === 0 &&
+    next.resources.materials <= rescue.atOrBelow &&
+    !next.deliveries.some((x) => x.kind === "emergency")
+  ) {
+    arrivals.push({ sol: newSol, amount: rescue.amount, kind: "emergency" });
+  }
+  if (arrivals.length > 0) {
+    const total = arrivals.reduce((sum, d) => sum + d.amount, 0);
+    next = {
+      ...next,
+      resources: { ...next.resources, materials: next.resources.materials + total },
+      deliveries: [...next.deliveries, ...arrivals],
+      log: [
+        ...next.log,
+        ...arrivals.map(
+          (d): LogEntry => ({
+            sol: newSol,
+            kind: "system",
+            title: d.kind === "emergency" ? "Emergency supplies arrived" : "Supply delivery arrived",
+            detail: `Mission Control sent ${d.amount} materials. Materials +${d.amount}.`,
+          }),
+        ),
+      ],
+    };
+  }
 
   const picked = pickEvent(next);
   next = { ...next, rng: picked.rng };
