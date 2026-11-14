@@ -61,7 +61,7 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
         </div>
         <div className="flex flex-col items-center gap-4 p-4 sm:flex-row">
           <div className="border-[3px] border-ink bg-slate p-2">
-            <LaikaSprite mood={laika.mood} scale={5} />
+            <LaikaSprite mood={laika.mood} scale={5} motion={laika.mood === "celebrate" ? "laika-hop-brief" : undefined} />
           </div>
           <div className="flex-1">
             <h1 className="h-pixel text-[26px] leading-tight">{ending.title}</h1>

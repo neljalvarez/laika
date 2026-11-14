@@ -1,5 +1,5 @@
 import { gridRects, outlined } from "./pixel/PixelSprite";
-import { LAIKA_FRAMES, type LaikaVariant } from "./pixel/sprites";
+import { LAIKA_FRAMES, LAIKA_WALK_FRAMES, PALETTE, type LaikaVariant } from "./pixel/sprites";
 
 const MOOD_LABEL: Record<LaikaVariant, string> = {
   idle: "Laika, calm",
@@ -10,19 +10,45 @@ const MOOD_LABEL: Record<LaikaVariant, string> = {
   celebrate: "Laika, celebrating",
 };
 
-/** The two frames stacked; CSS swaps them (see .laika-frame-a/b in globals.css). */
-export function LaikaFrames({ mood }: { mood: LaikaVariant }) {
-  const [a, b] = LAIKA_FRAMES[mood];
+interface FramesProps {
+  mood: LaikaVariant;
+  /** Short walk cycle with alternating paws while Laika changes position. */
+  walking?: boolean;
+}
+
+/**
+ * Two sprite frames stacked; CSS swaps them in discrete steps (globals.css).
+ * Idle adds a separate blink layer and pauses between tail wags.
+ */
+export function LaikaFrames({ mood, walking = false }: FramesProps) {
+  const [a, b] = walking ? LAIKA_WALK_FRAMES : LAIKA_FRAMES[mood];
+  const cls = walking ? "laika-walk" : `laika-${mood}`;
   return (
-    <g className={`laika laika-${mood}`}>
+    <g className={`laika ${cls}`}>
       <g className="laika-frame-a">{gridRects(outlined(a), "a")}</g>
       <g className="laika-frame-b">{gridRects(outlined(b), "b")}</g>
+      {mood === "idle" && !walking && (
+        // Closed eyes drawn over the open ones (outlined grid is offset by 1px).
+        <g className="laika-blink">
+          <rect x={9} y={8} width={1} height={1} fill={PALETTE.O} />
+          <rect x={16} y={8} width={1} height={1} fill={PALETTE.O} />
+          <rect x={9} y={9} width={1} height={1} fill={PALETTE.N} />
+          <rect x={16} y={9} width={1} height={1} fill={PALETTE.N} />
+        </g>
+      )}
     </g>
   );
 }
 
+interface SpriteProps {
+  mood: LaikaVariant;
+  scale?: number;
+  /** Extra animation class for the whole sprite, e.g. a brief bounce. */
+  motion?: string;
+}
+
 /** Standalone Laika portrait (26×26 sprite pixels including outline). */
-export function LaikaSprite({ mood, scale = 4 }: { mood: LaikaVariant; scale?: number }) {
+export function LaikaSprite({ mood, scale = 4, motion }: SpriteProps) {
   return (
     <svg
       width={26 * scale}
@@ -33,7 +59,9 @@ export function LaikaSprite({ mood, scale = 4 }: { mood: LaikaVariant; scale?: n
       aria-label={MOOD_LABEL[mood]}
       style={{ imageRendering: "pixelated", flex: "none", overflow: "visible" }}
     >
-      <LaikaFrames mood={mood} />
+      <g className={motion}>
+        <LaikaFrames mood={mood} />
+      </g>
     </svg>
   );
 }

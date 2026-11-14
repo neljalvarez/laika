@@ -98,6 +98,11 @@ const CONCERNED_FACE: Patch[] = [
   [11, 11, "NN"],
   [4, 18, "Z"],
   [5, 18, "Z"],
+  // Ears droop: remove the ear tips and extend them down the sides of the face.
+  [3, 8, "GG"],
+  [3, 14, "GG"],
+  [7, 7, "B"],
+  [7, 16, "B"],
 ];
 const ALERT_FACE: Patch[] = [
   [6, 8, "N"],
@@ -155,6 +160,22 @@ export const LAIKA_FRAMES: Record<LaikaVariant, [Grid, Grid]> = {
     patchGrid(LAIKA_BASE, [...HAPPY_FACE, ...TAIL_DOWN]),
   ],
 };
+
+// Walk cycle: alternating lifted paws (used only while Laika changes position).
+const WALK_LEFT: Patch[] = [
+  [21, 5, "RRRRR"],
+  [22, 5, "WWWWW"],
+  [23, 5, "....."],
+];
+const WALK_RIGHT: Patch[] = [
+  [21, 14, "RRRRR"],
+  [22, 14, "WWWWW"],
+  [23, 14, "....."],
+];
+export const LAIKA_WALK_FRAMES: [Grid, Grid] = [
+  patchGrid(LAIKA_BASE, [...WALK_LEFT, ...TAIL_UP]),
+  patchGrid(LAIKA_BASE, [...WALK_RIGHT, ...TAIL_DOWN]),
+];
 
 export type IconName = "power" | "lifeSupport" | "materials" | "food" | "radiation" | "warning" | "sun" | "dust";
 

@@ -32,6 +32,25 @@ Requires Node 18.18+ (developed on Node 22). No environment variables, backend, 
 - Preview the next sol, advance, and read an itemised before / change / after report.
 - Mission log, NASA Science Lab, autosave + Continue, Restart, and a final debrief with a 100-point score.
 
+## Phase 2 polish (tutorial, animation, sound)
+
+Added on top of the original game without changing rules, balance, events, scoring or saved data:
+
+- **Guided training (6 stages)** in Laika's dialogue panel: Welcome → Solar Array → meters → Greenhouse → Preview →
+  Advance. Interactive stages wait for the real action. **Skip Tutorial** is always visible and changes nothing but
+  tutorial mode. Help → "Replay guided training" restarts the guide without touching mission progress.
+- **Laika animation:** idle tail wags with pauses and blinking, drooping ears when worried, a brief bounce after a
+  build, a 2-frame walk to and from the shelter, and a celebration that settles on the debrief.
+- **8-bit sound** (`lib/sound.ts`): eleven synthesized cues, started only after a user gesture, throttled against
+  spam, with a persisted Sound On/Off button on the menu and in the mission header.
+- **Buildings:** hover/focus/tap brightens the building and shows its name and job in a strip at the top of the
+  scene; the selected building keeps a yellow marker. Upgrades flash the building and show a confirmation.
+- **Clarity:** meters show the real change from the last sol, critical meters get a warning icon, emergencies get
+  hazard stripes, and a "SOL n" banner marks each new sol.
+
+Old saves still load: `migrateSave` in `game/persistence.ts` shifts the tutorial step numbering instead of
+invalidating them.
+
 ## Project layout
 
 ```text
@@ -41,6 +60,7 @@ components/pixel/    Original pixel art: sprite grids, module drawings, sprite r
 game/                Pure TypeScript engine (no React): types, config, engine, events,
                      upgrades, scoring, reducer, persistence, seeded RNG
 data/                Authored content: modules, events, Laika dialogue, science cards
+lib/                 Web Audio sound engine
 tests/               Vitest tests + campaign bots
 ```
 
@@ -113,8 +133,9 @@ Review, then merge with a merge commit or squash. Do not force-push shared branc
 
 ## Known limits
 
-- No sound (so there is no sound toggle).
+- Sound effects are synthesized in the browser (Web Audio). There is no music and no volume slider, only Sound On/Off.
+- Laika walks only when moving to or from the shelter; she is otherwise a stationary companion.
 - On phones the outpost scales down; modules stay tappable and the Workshop table offers the same selection.
 - Art is drawn in code as SVG pixel rectangles, in the palette and shapes of the team's style sheet. It is not a
-  frame-for-frame copy of that sheet (no 4-frame walk cycle; Laika has six moods with two frames each).
+  frame-for-frame copy of that sheet (Laika has six moods with two frames each, a blink layer and a 2-frame walk).
 - One difficulty level. No achievements.

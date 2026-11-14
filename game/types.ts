@@ -180,8 +180,12 @@ export interface LastAction {
 
 export interface TutorialState {
   active: boolean;
-  /** 0 inspect solar, 1 read meters, 2 greenhouse mode, 3 preview, 4 advance. */
+  /** 0 welcome, 1 inspect solar, 2 read meters, 3 greenhouse mode, 4 preview, 5 advance. */
   step: number;
+  /** True once the tutorial was finished or skipped (optional so old saves stay valid). */
+  completed?: boolean;
+  /** Step-numbering version; absent in saves made before the welcome stage existed. */
+  v?: number;
 }
 
 export interface MissionState {
@@ -234,5 +238,7 @@ export type GameAction =
   | { type: "ADVANCE_SOL" }
   | { type: "DISMISS_REPORT" }
   | { type: "TUTORIAL_STEP"; from: number }
+  | { type: "TUTORIAL_BACK" }
   | { type: "TUTORIAL_SKIP" }
+  | { type: "TUTORIAL_REPLAY" }
   | { type: "CLEAR_NOTICE" };

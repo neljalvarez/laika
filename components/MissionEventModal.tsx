@@ -25,7 +25,7 @@ export function MissionEventModal({ state, dispatch }: { state: MissionState; di
   if (!state.pendingEvent) return null;
   const event = EVENTS[state.pendingEvent];
   return (
-    <Modal title={`Sol ${state.sol} — Mission Control Alert`} maxWidth={900}>
+    <Modal title={`Sol ${state.sol} — Mission Control Alert`} maxWidth={900} tone={event.id === "resupply" ? "normal" : "alert"}>
       <div className="mb-3 flex items-start gap-3">
         <div className="border-[3px] border-ink bg-navy p-1">
           <PixelSprite grid={ICONS[event.icon]} scale={5} />

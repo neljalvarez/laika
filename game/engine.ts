@@ -392,7 +392,7 @@ export function advanceSol(state: MissionState): MissionState {
     reportPending: true,
     notice: null,
     lastAction: null,
-    tutorial: { active: false, step: state.tutorial.step },
+    tutorial: { ...state.tutorial, active: false, completed: state.tutorial.completed || state.tutorial.active },
   };
 
   // 9. Mission status

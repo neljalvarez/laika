@@ -5,7 +5,8 @@ import { resolveEvent } from "./events";
 import { applyRepair, applyUpgrade } from "./upgrades";
 import type { GameAction, MissionState } from "./types";
 
-export const TUTORIAL_LAST_STEP = 4;
+export const TUTORIAL_LAST_STEP = 5;
+export const TUTORIAL_VERSION = 2;
 
 export function missionReducer(state: MissionState, action: GameAction): MissionState {
   switch (action.type) {
@@ -28,11 +29,21 @@ export function missionReducer(state: MissionState, action: GameAction): Mission
     case "TUTORIAL_STEP": {
       const t = state.tutorial;
       if (!t.active || t.step !== action.from) return state;
-      if (t.step >= TUTORIAL_LAST_STEP) return { ...state, tutorial: { active: false, step: t.step } };
-      return { ...state, tutorial: { active: true, step: t.step + 1 } };
+      if (t.step >= TUTORIAL_LAST_STEP) return { ...state, tutorial: { ...t, active: false, completed: true } };
+      return { ...state, tutorial: { ...t, step: t.step + 1 } };
     }
+    case "TUTORIAL_BACK": {
+      const t = state.tutorial;
+      if (!t.active || t.step <= 0) return state;
+      return { ...state, tutorial: { ...t, step: t.step - 1 } };
+    }
+    // Skipping only leaves tutorial mode: resources, sol, RNG and events are untouched.
     case "TUTORIAL_SKIP":
-      return state.tutorial.active ? { ...state, tutorial: { active: false, step: state.tutorial.step } } : state;
+      return state.tutorial.active ? { ...state, tutorial: { ...state.tutorial, active: false, completed: true } } : state;
+    // Help-only replay: turns the guide back on without changing any mission data.
+    case "TUTORIAL_REPLAY":
+      if (state.status !== "playing" || state.tutorial.active) return state;
+      return { ...state, tutorial: { active: true, step: 0, completed: state.tutorial.completed, v: TUTORIAL_VERSION } };
     case "CLEAR_NOTICE":
       return state.notice ? { ...state, notice: null } : state;
   }
