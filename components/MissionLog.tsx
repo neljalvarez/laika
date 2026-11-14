@@ -12,7 +12,7 @@ const KIND_LABEL: Record<LogEntry["kind"], { text: string; cls: string }> = {
   warning: { text: "Warning", cls: "tag-bad" },
 };
 
-export function MissionLogList({ log, maxHeight = 420 }: { log: LogEntry[]; maxHeight?: number }) {
+export function MissionLogList({ log, maxHeight = 420, compact = false }: { log: LogEntry[]; maxHeight?: number; compact?: boolean }) {
   return (
     <ol className="scroll-y space-y-1 pr-1" style={{ maxHeight }} aria-label="Mission log entries" tabIndex={0}>
       {log.map((e, i) => (
@@ -24,7 +24,14 @@ export function MissionLogList({ log, maxHeight = 420 }: { log: LogEntry[]; maxH
             <span className={`tag ${KIND_LABEL[e.kind].cls}`}>{KIND_LABEL[e.kind].text}</span>
             <strong>{e.title}</strong>
           </div>
-          <div>{e.detail}</div>
+          {compact ? (
+            <details>
+              <summary className="cursor-pointer text-[12px] font-bold">Details</summary>
+              <div>{e.detail}</div>
+            </details>
+          ) : (
+            <div>{e.detail}</div>
+          )}
         </li>
       ))}
     </ol>

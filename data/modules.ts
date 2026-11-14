@@ -10,6 +10,8 @@ export interface ModuleInfo {
   role: string;
   /** Plain-language effect at each level (index 0 = level 1). */
   levelEffects: readonly string[];
+  /** One headline number per level, for "before → after" displays. */
+  stat: { label: string; values: readonly string[] };
   damageNote: string;
 }
 
@@ -20,6 +22,7 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "habitat",
     name: "Habitat",
     short: "HAB",
+    stat: { label: "Life support used per sol", values: c.lifeSupportUse.map(String) },
     tip: "Laika's sealed home on Mars.",
     role: "Laika's sealed home. A better habitat leaks less air and heat.",
     levelEffects: [
@@ -33,6 +36,7 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "solar",
     name: "Solar Array",
     short: "SOLAR",
+    stat: { label: "Power per clear sol", values: c.solarOutput.map(String) },
     tip: "Produces electricity from sunlight.",
     role: "Turns sunlight into electricity. Dust in the sky or on the panels lowers output.",
     levelEffects: [
@@ -46,6 +50,7 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "battery",
     name: "Battery Station",
     short: "BATT",
+    stat: { label: "Power storage", values: c.batteryCapacity.map(String) },
     tip: "Stores electricity for dusty sols.",
     role: "Stores electricity for dusty sols. Extra power above capacity is wasted.",
     levelEffects: [
@@ -59,6 +64,7 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "lifeSupport",
     name: "Life Support",
     short: "LIFE",
+    stat: { label: "Life support recycled per sol", values: c.lifeSupportRecovery.map(String) },
     tip: "Recycles the outpost's air and water.",
     role: "Cleans and recycles air and water so the reserve lasts longer.",
     levelEffects: [
@@ -72,6 +78,7 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "shelter",
     name: "Radiation Shelter",
     short: "SHELTER",
+    stat: { label: "Radiation hazard let through", values: c.shelterMult.map((m) => `${Math.round(m * 100)}%`) },
     tip: "Thick walls that slow the radiation hazard.",
     role: "Thick walls that reduce how fast the radiation hazard meter rises.",
     levelEffects: [
@@ -85,6 +92,7 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "greenhouse",
     name: "Greenhouse",
     short: "GROW",
+    stat: { label: "Food per sol on HIGH", values: c.greenhouseLevelBonus.map((b) => String(c.greenhouseFood.HIGH + b)) },
     tip: "Grows food using electricity.",
     role: `Grows food using power. New crops need ${c.cropEstablishSols} powered sols before the first harvest.`,
     levelEffects: [

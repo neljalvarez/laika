@@ -21,7 +21,7 @@ interface MeterProps {
 function Meter({ icon, label, value, max, color, status, hint, delta, goodWhenUp }: MeterProps) {
   const filled = Math.max(0, Math.min(10, Math.round((value / max) * 10)));
   const deltaText =
-    delta === null ? null : delta === 0 ? "±0 last sol" : `${delta > 0 ? "▲ +" : "▼ −"}${Math.abs(delta)} last sol`;
+    delta === null ? null : delta === 0 ? "±0" : `${delta > 0 ? "▲ +" : "▼ −"}${Math.abs(delta)}`;
   const deltaGood = delta !== null && delta !== 0 && delta > 0 === goodWhenUp;
   return (
     <div
@@ -34,32 +34,37 @@ function Meter({ icon, label, value, max, color, status, hint, delta, goodWhenUp
       aria-valuetext={`${value} of ${max}, ${status.word}${deltaText ? `, ${deltaText}` : ""}`}
       title={hint}
     >
-      <div className="flex items-center justify-between gap-1 text-[12px] font-extrabold uppercase tracking-wide">
+      <div className="flex items-center justify-between gap-1 text-[11px] font-extrabold uppercase tracking-wide">
         <span className="flex min-w-0 items-center gap-1">
           <span className={status.level === "bad" ? "blink" : undefined}>
             <PixelSprite grid={ICONS[status.level === "bad" ? "warning" : icon]} scale={2} />
           </span>
           <span className="truncate">{label}</span>
         </span>
-        <span className={`tag ${status.level === "ok" ? "tag-ok" : status.level === "warn" ? "tag-warn" : "tag-bad"}`} style={{ color: status.level === "bad" ? "#fff" : "#2a1a22", fontSize: 10 }}>
-          {status.word}
+        <span className="whitespace-nowrap text-[13px] tabular-nums">
+          {value}
+          <span className="text-[10px] opacity-80">/{max}</span>
         </span>
       </div>
-      <div className="mt-1 flex items-center gap-2">
-        <div className="meter-segs flex-1" aria-hidden="true">
-          {Array.from({ length: 10 }, (_, i) => (
-            <div key={i} className="meter-seg" style={i < filled ? { background: color } : undefined} />
-          ))}
-        </div>
-        <span className="whitespace-nowrap text-[13px] font-extrabold tabular-nums">
-          {value}/{max}
-        </span>
+      <div className="meter-segs mt-1" aria-hidden="true">
+        {Array.from({ length: 10 }, (_, i) => (
+          <div key={i} className="meter-seg" style={i < filled ? { background: color } : undefined} />
+        ))}
       </div>
-      {deltaText && (
-        <div className="meter-delta" style={{ color: delta === 0 ? "#b9c2d6" : deltaGood ? "#81C995" : "#F2CA76" }}>
-          {deltaText}
-        </div>
-      )}
+      <div className="mt-[2px] flex items-center justify-between gap-1" style={{ minHeight: 14 }}>
+        {status.level !== "ok" ? (
+          <span className={`tag ${status.level === "warn" ? "tag-warn" : "tag-bad"}`} style={{ color: status.level === "bad" ? "#fff" : "#2a1a22", fontSize: 9, lineHeight: 1.2 }}>
+            {status.word}
+          </span>
+        ) : (
+          <span />
+        )}
+        {deltaText && (
+          <span className="meter-delta" style={{ color: delta === 0 ? "#b9c2d6" : deltaGood ? "#81C995" : "#F2CA76" }}>
+            {deltaText}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -70,7 +75,7 @@ export const WEATHER_TEXT: Record<Weather, { label: string; icon: IconName; note
   STORM: { label: "Dust storm", icon: "warning", note: "Solar ×0.40" },
 };
 
-export function ResourceHud({ state, highlight }: { state: MissionState; highlight: boolean }) {
+export function ResourceHud({ state }: { state: MissionState }) {
   const r = state.resources;
   const cap = batteryCapacity(state);
   // Only show "last sol" changes for the sol that just finished.
@@ -80,7 +85,7 @@ export function ResourceHud({ state, highlight }: { state: MissionState; highlig
   return (
     <div
       id="hud-meters"
-      className={`grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 ${highlight ? "tutorial-target" : ""}`}
+      className="grid min-w-0 flex-1 grid-cols-2 gap-1 sm:grid-cols-5"
       aria-label="Resource meters"
     >
       <Meter icon="power" label="Power" value={r.power} max={cap} color="#F2CA76" status={resourceStatus(state, "power")} delta={delta("power")} goodWhenUp hint="Battery charge. Essential systems use 18 per sol." />

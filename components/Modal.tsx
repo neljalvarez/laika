@@ -11,12 +11,14 @@ interface ModalProps {
   footer?: ReactNode;
   /** "alert" adds hazard stripes under the title for emergencies. */
   tone?: "normal" | "alert";
+  /** Set false for dialogs a stray click must not dismiss (reports). */
+  backdropClose?: boolean;
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Accessible pixel-style dialog: focus moves in, Tab is trapped, focus returns on close. */
-export function Modal({ title, children, onClose, maxWidth = 720, footer, tone = "normal" }: ModalProps) {
+export function Modal({ title, children, onClose, maxWidth = 720, footer, tone = "normal", backdropClose = true }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -56,7 +58,7 @@ export function Modal({ title, children, onClose, maxWidth = 720, footer, tone =
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div className="modal-backdrop" onMouseDown={(e) => backdropClose && e.target === e.currentTarget && onClose?.()}>
       <div
         ref={ref}
         className="modal panel"

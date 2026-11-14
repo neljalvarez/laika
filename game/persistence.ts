@@ -1,5 +1,6 @@
 // Versioned LocalStorage persistence with guarded browser access.
 import { SAVE_VERSION } from "./config";
+import { normalizeDifficulty } from "./difficulty";
 import { MODULE_IDS, type MissionState } from "./types";
 
 export const SAVE_KEY = "laika-mission-red-planet/save";
@@ -53,16 +54,19 @@ export function validateSave(data: unknown): data is MissionState {
 }
 
 /**
- * Saves written before the "Welcome" tutorial stage numbered the steps from
- * "inspect solar" = 0. Shift them by one instead of invalidating the save.
+ * Brings older saves up to date instead of rejecting them:
+ * - tutorial steps were renumbered when the "Welcome" stage was added;
+ * - difficulty did not exist (plays as Normal, the original balance);
+ * - deliveries were not tracked.
  */
 export function migrateSave(state: MissionState): MissionState {
   const t = state.tutorial;
-  if (t.v === 2) return state;
-  return {
-    ...state,
-    tutorial: { active: t.active, step: t.active ? t.step + 1 : t.step, completed: t.completed ?? !t.active, v: 2 },
-  };
+  const tutorial =
+    t.v === 2 ? t : { active: t.active, step: t.active ? t.step + 1 : t.step, completed: t.completed ?? !t.active, v: 2 };
+  const difficulty = normalizeDifficulty(state.difficulty);
+  const deliveries = Array.isArray(state.deliveries) ? state.deliveries : [];
+  if (tutorial === t && difficulty === state.difficulty && deliveries === state.deliveries) return state;
+  return { ...state, tutorial, difficulty, deliveries };
 }
 
 export function saveMission(state: MissionState, storage: StorageLike | null = browserStorage()): boolean {

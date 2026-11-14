@@ -25,7 +25,7 @@ Requires Node 18.18+ (developed on Node 22). No environment variables, backend, 
 ## What you can do
 
 - Title screen → skippable story → guided Sol 1 tutorial (or skip it).
-- Click any of six pixel-art modules to inspect it; upgrade or repair one per sol with limited materials.
+- Pick Easy, Normal or Hard, then click any of six pixel-art modules to inspect it; upgrade or repair one per sol.
 - Switch the greenhouse between OFF / LOW / HIGH and watch the live "If you advance now" prediction.
 - Answer seeded emergency events (dust storm, solar particle warning, water recycler failure, dusty panels, habitat
   leak, greenhouse fault, supply drone), each with 3 choices, costs and consequences.
@@ -50,6 +50,37 @@ Added on top of the original game without changing rules, balance, events, scori
 
 Old saves still load: `migrateSave` in `game/persistence.ts` shifts the tutorial step numbering instead of
 invalidating them.
+
+## Phase 3 (playtest fixes: simpler UI, spotlight, audio, difficulty)
+
+Game formulas, events, scoring and endings are unchanged. Normal difficulty is the original balance.
+
+- **Three regions.** A compact status bar (Sol, weather, five meters, Settings), the outpost with one line of
+  guidance and the Advance button, and one tabbed panel: Overview, Buildings, Engineering, Log, Science.
+  Clicking a building opens the Buildings tab.
+- **Shorter sol change.** Advance → "SOL n — A new day on Mars." (click to skip) → a five-line summary with the one
+  most important message → Continue. "View full report" still shows the complete itemised report.
+- **Tutorial spotlight.** Everything except the current target is dimmed and blocked; the target stays clickable.
+  The hole follows the real element every frame, so it survives resizes, scrolling and tab changes.
+- **Repair vs Upgrade.** Two separate cards in Engineering: Upgrade ("makes it stronger": level and stat before →
+  after) and Repair ("fixes damage": condition before → after, level unchanged).
+- **Upgrade reveal.** After a real upgrade, a focused panel shows the enlarged building, the level change, the stat
+  change from the game rules, and materials spent. It is presentation only.
+- **Audio.** Original synthesized music loop and soft ambience, plus the existing effects. Settings has separate
+  switches for Music (default off), Ambience (default on), Sound effects (default on) and All sound.
+- **Difficulty** (`game/difficulty.ts`), chosen before a mission and saved with it:
+
+  | | Easy | Normal | Hard |
+  | --- | --- | --- | --- |
+  | Starting materials | 80 | 60 | 45 |
+  | Planned deliveries | +10 on Sols 3, 5, 7 | none | +10 on Sol 5 |
+  | Emergency resupply | once, +12 if materials ≤ 5 | none | none |
+  | Supply Drone event | can appear | can appear | never |
+  | Event chance (Sols 4–9) | 70% | 85% | 100% |
+  | Dusty-sky chance | 20% | 30% | 40% |
+
+  Deliveries are recorded in the save (`deliveries`), so a reload can never grant one twice. Saves from before
+  difficulty existed load as Normal.
 
 ## Project layout
 
@@ -133,9 +164,10 @@ Review, then merge with a merge commit or squash. Do not force-push shared branc
 
 ## Known limits
 
-- Sound effects are synthesized in the browser (Web Audio). There is no music and no volume slider, only Sound On/Off.
+- All audio is synthesized in the browser (Web Audio). There are on/off switches but no volume sliders.
 - Laika walks only when moving to or from the shelter; she is otherwise a stationary companion.
 - On phones the outpost scales down; modules stay tappable and the Workshop table offers the same selection.
 - Art is drawn in code as SVG pixel rectangles, in the palette and shapes of the team's style sheet. It is not a
   frame-for-frame copy of that sheet (Laika has six moods with two frames each, a blink layer and a 2-frame walk).
-- One difficulty level. No achievements.
+- No achievements.
+- During the tutorial, keyboard focus is limited to the region holding the target, not to the single target control.

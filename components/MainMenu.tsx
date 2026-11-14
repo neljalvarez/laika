@@ -3,7 +3,6 @@
 import { LaikaFrames } from "./LaikaSprite";
 import { DustLayer, MarsBackdrop, SCENE_H, SCENE_W } from "./PixelMarsOutpost";
 import { C, dome, px } from "./pixel/moduleArt";
-import { SoundToggle } from "./SoundToggle";
 
 interface Props {
   hasSave: boolean;
@@ -14,9 +13,10 @@ interface Props {
   onHowTo: () => void;
   onScience: () => void;
   onCredits: () => void;
+  onSettings: () => void;
 }
 
-export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onHowTo, onScience, onCredits }: Props) {
+export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onHowTo, onScience, onCredits, onSettings }: Props) {
   return (
     <main className="mx-auto flex min-h-screen max-w-[1100px] flex-col justify-center gap-3 p-3">
       <div className="outpost-frame relative">
@@ -76,7 +76,7 @@ export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onH
             </div>
           </div>
           <button type="button" className="btn btn-gray" onClick={onRandom}>
-            Random Mission (no tutorial)
+            Random Mission
           </button>
           <button type="button" className="btn btn-gray" onClick={onHowTo}>
             How to Play
@@ -87,7 +87,9 @@ export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onH
           <button type="button" className="btn btn-gray" onClick={onCredits}>
             Credits
           </button>
-          <SoundToggle small={false} />
+          <button type="button" className="btn btn-gray" onClick={onSettings}>
+            ⚙ Settings
+          </button>
         </div>
         <p className="border-t-[3px] border-ink p-3 text-[12px]">
           <strong>This story is fiction.</strong> The real Laika flew on Sputnik 2 in 1957 and did not survive. This

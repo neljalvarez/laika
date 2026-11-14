@@ -1,20 +1,23 @@
 import { CONFIG, SAVE_VERSION } from "./config";
+import { DIFFICULTIES, type Difficulty } from "./difficulty";
 import { nextRandom } from "./rng";
 import type { MissionState, Weather } from "./types";
 
-export function createInitialState(seed: number, tutorial: boolean): MissionState {
+export function createInitialState(seed: number, tutorial: boolean, difficulty: Difficulty = "normal"): MissionState {
+  const diff = DIFFICULTIES[difficulty];
   // First roll decides the Sol 2 forecast so it is visible from Sol 1.
   const roll = nextRandom(seed | 0);
-  const forecast: Weather = roll.value < CONFIG.dustyChance ? "DUSTY" : "CLEAR";
+  const forecast: Weather = roll.value < diff.dustyChance ? "DUSTY" : "CLEAR";
   return {
     version: SAVE_VERSION,
     seed,
     rng: roll.next,
-    difficulty: "standard",
+    difficulty,
+    deliveries: [],
     status: "intro",
     sol: 1,
     maxSols: CONFIG.maxSols,
-    resources: { ...CONFIG.start },
+    resources: { ...CONFIG.start, materials: diff.startMaterials },
     modules: {
       habitat: { level: 1, condition: 100 },
       solar: { level: 1, condition: 100 },

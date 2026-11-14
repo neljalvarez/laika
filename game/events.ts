@@ -1,6 +1,7 @@
 // Seeded, state-aware event selection and event resolution.
 import { EVENTS, EVENT_LIST } from "@/data/events";
 import { CONFIG, clamp, round1 } from "./config";
+import { difficultyOf } from "./difficulty";
 import { nextRandom } from "./rng";
 import { batteryCapacity, shelterMultiplier } from "./engine";
 import {
@@ -32,7 +33,7 @@ function isFair(event: MissionEvent, s: MissionState): boolean {
     case "greenhouse_fault":
       return r.food >= 4;
     case "resupply":
-      return true;
+      return difficultyOf(s).randomResupply;
   }
 }
 
@@ -59,7 +60,7 @@ export function pickEvent(s: MissionState): PickResult {
   if (s.sol > 3) {
     const gate = nextRandom(rng);
     rng = gate.next;
-    if (gate.value >= CONFIG.eventChance) return { event: null, rng };
+    if (gate.value >= difficultyOf(s).eventChance) return { event: null, rng };
   }
   const pool = eligibleEvents(s);
   if (pool.length === 0) return { event: null, rng };

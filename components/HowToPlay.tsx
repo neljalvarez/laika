@@ -49,14 +49,15 @@ export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
         <strong>10 sols</strong> (Mars days).
       </p>
       <ol className="mb-3 list-decimal space-y-1 pl-6 text-[14px]">
-        <li>Click a building to inspect it.</li>
+        <li>Click a building to see what it does.</li>
         <li>
-          Do <strong>one</strong> engineering action each sol: upgrade <em>or</em> repair.
+          In the Engineering tab, do <strong>one</strong> build each sol. <strong>Upgrade</strong> makes a building stronger.{" "}
+          <strong>Repair</strong> fixes damage.
         </li>
         <li>Set the greenhouse to OFF, LOW or HIGH. This is free.</li>
         <li>Answer Mission Control when an emergency appears.</li>
         <li>Press Preview Next Sol to check your plan, then Advance Sol.</li>
-        <li>Read the report to see what changed and why.</li>
+        <li>Read the short report. Press View Full Report to see every number.</li>
       </ol>
       <ul className="space-y-2">
         {RULES.map((r) => (
@@ -75,7 +76,7 @@ export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
       <ul className="list-disc pl-6 text-[13px]">
         <li>Mouse or touch: click or tap a building to select it. Its name and job appear at the top of the scene.</li>
         <li>Keyboard: Tab moves between buildings and buttons. Enter or Space selects.</li>
-        <li>The ♪ Sound button turns the 8-bit sound effects on or off. Nothing important is sound-only.</li>
+        <li>Settings has separate switches for music, ambience and sound effects. Nothing important is sound-only.</li>
       </ul>
       <h2 className="h-pixel mt-3 text-[14px]">Upgrades and events</h2>
       <ul className="list-disc pl-6 text-[13px]">

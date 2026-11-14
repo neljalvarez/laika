@@ -6,7 +6,18 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { criticalResources } from "@/game/status";
 import type { MissionState } from "@/game/types";
-import { isSoundEnabled, playSound, setSoundEnabled, subscribeSound, unlockAudio } from "@/lib/sound";
+import {
+  getAudioPrefs,
+  isSoundEnabled,
+  playSound,
+  SERVER_PREFS,
+  setAudioPref,
+  setSoundEnabled,
+  subscribeSound,
+  unlockAudio,
+  type AudioPrefKey,
+  type AudioPrefs,
+} from "@/lib/sound";
 
 const INTERACTIVE = 'button, [role="button"], a[href]';
 
@@ -82,9 +93,8 @@ export function useGameSounds(mission: MissionState | null): void {
     const t = mission.tutorial;
     if (before.tutorial.active && (t.step > before.tutorial.step || (!t.active && t.completed))) playSound("tutorial", 60);
 
-    // New sol begins when the end-of-sol report is acknowledged.
-    const reportClosed = before.reportPending && !mission.reportPending;
-    if (reportClosed && mission.status === "playing") playSound("sol");
+    // The new-sol splash appears as soon as the engine has advanced the sol.
+    if (mission.sol > before.sol && mission.status === "playing") playSound("sol", 80);
 
     const eventVisible = mission.pendingEvent !== null && !mission.reportPending;
     const eventWasVisible = before.pendingEvent !== null && !before.reportPending;
@@ -99,4 +109,10 @@ export function useGameSounds(mission: MissionState | null): void {
 export function useSoundEnabled(): [boolean, (on: boolean) => void] {
   const on = useSyncExternalStore(subscribeSound, isSoundEnabled, () => true);
   return [on, setSoundEnabled];
+}
+
+/** All four audio switches (music, ambience, sound effects, master). */
+export function useAudioPrefs(): [AudioPrefs, (key: AudioPrefKey, on: boolean) => void] {
+  const prefs = useSyncExternalStore(subscribeSound, getAudioPrefs, () => SERVER_PREFS);
+  return [prefs, setAudioPref];
 }

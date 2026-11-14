@@ -3,6 +3,7 @@
 import { getLaikaLine } from "@/data/dialogue";
 import { MODULES } from "@/data/modules";
 import { computeScore, ENDING_RULES, ENDING_TEXT, type ScoreCategoryId } from "@/game/scoring";
+import { difficultyOf } from "@/game/difficulty";
 import { MODULE_IDS, type MissionState } from "@/game/types";
 import { LaikaSprite } from "./LaikaSprite";
 import { MissionLogList } from "./MissionLog";
@@ -81,6 +82,9 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
               {score.total}
             </div>
             <div className="text-[14px] font-extrabold">out of 100</div>
+            <div className="mt-1 text-[11px] font-extrabold uppercase" data-testid="debrief-difficulty">
+              {difficultyOf(state).label} mode
+            </div>
           </div>
         </div>
       </section>
@@ -108,7 +112,8 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
             {score.progress < 1
               ? `The mission ended after ${solsDone} of ${state.maxSols} sols, so every category is scaled by ${solsDone}/${state.maxSols}. `
               : ""}
-            Outstanding needs {ENDING_RULES.outstanding.score}+ points, life support {ENDING_RULES.outstanding.lifeSupport}+, radiation
+            Played on {difficultyOf(state).label} ({difficultyOf(state).title}). Scores from different difficulties are not directly
+            comparable. Outstanding needs {ENDING_RULES.outstanding.score}+ points, life support {ENDING_RULES.outstanding.lifeSupport}+, radiation
             hazard under {ENDING_RULES.outstanding.radiationBelow}, every module at {ENDING_RULES.outstanding.minCondition}%+ condition and no
             shortages. Success needs {ENDING_RULES.success.score}+ points, life support {ENDING_RULES.success.lifeSupport}+ and radiation
             hazard under {ENDING_RULES.success.radiationBelow}.
@@ -220,7 +225,7 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
 
       <div className="flex flex-wrap justify-center gap-3 pb-6">
         <button type="button" className="btn btn-go" onClick={onPlayAgain}>
-          Play Again (new random mission)
+          Play Again (same difficulty)
         </button>
         <button type="button" className="btn btn-gray" onClick={onMenu}>
           Main Menu
