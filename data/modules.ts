@@ -10,6 +10,9 @@ export interface ModuleInfo {
   role: string;
   /** Plain-language effect at each level (index 0 = level 1). */
   levelEffects: readonly string[];
+  /** Short "why does this matter?" line, linked to a Science Lab card. */
+  why: string;
+  card: string;
   /** One headline number per level, for "before → after" displays. */
   stat: { label: string; values: readonly string[] };
   damageNote: string;
@@ -22,6 +25,8 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "habitat",
     name: "Habitat",
     short: "HAB",
+    why: "A sealed habitat keeps air in. Leaks waste life support.",
+    card: "water",
     stat: { label: "Life support used per sol", values: c.lifeSupportUse.map(String) },
     tip: "Laika's sealed home on Mars.",
     role: "Laika's sealed home. A better habitat leaks less air and heat.",
@@ -36,6 +41,8 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "solar",
     name: "Solar Array",
     short: "SOLAR",
+    why: "Mars can get dusty. Less sunlight means less electricity from solar panels.",
+    card: "power",
     stat: { label: "Power per clear sol", values: c.solarOutput.map(String) },
     tip: "Produces electricity from sunlight.",
     role: "Turns sunlight into electricity. Dust in the sky or on the panels lowers output.",
@@ -50,6 +57,8 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "battery",
     name: "Battery Station",
     short: "BATT",
+    why: "Batteries save power for dusty sols, when the panels make less.",
+    card: "power",
     stat: { label: "Power storage", values: c.batteryCapacity.map(String) },
     tip: "Stores electricity for dusty sols.",
     role: "Stores electricity for dusty sols. Extra power above capacity is wasted.",
@@ -64,6 +73,8 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "lifeSupport",
     name: "Life Support",
     short: "LIFE",
+    why: "Life support recycles air and water. Damaged equipment works less well.",
+    card: "water",
     stat: { label: "Life support recycled per sol", values: c.lifeSupportRecovery.map(String) },
     tip: "Recycles the outpost's air and water.",
     role: "Cleans and recycles air and water so the reserve lasts longer.",
@@ -78,6 +89,8 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "shelter",
     name: "Radiation Shelter",
     short: "SHELTER",
+    why: "Better shielding lowers radiation risk, but upgrading it uses valuable materials.",
+    card: "radiation",
     stat: { label: "Radiation hazard let through", values: c.shelterMult.map((m) => `${Math.round(m * 100)}%`) },
     tip: "Thick walls that slow the radiation hazard.",
     role: "Thick walls that reduce how fast the radiation hazard meter rises.",
@@ -92,6 +105,8 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     id: "greenhouse",
     name: "Greenhouse",
     short: "GROW",
+    why: "Growing more food needs more power. Make sure the station has enough electricity.",
+    card: "food",
     stat: { label: "Food per sol on HIGH", values: c.greenhouseLevelBonus.map((b) => String(c.greenhouseFood.HIGH + b)) },
     tip: "Grows food using electricity.",
     role: `Grows food using power. New crops need ${c.cropEstablishSols} powered sols before the first harvest.`,

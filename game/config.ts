@@ -56,6 +56,8 @@ export const CONFIG = {
   shortageBatteryWear: 5,
   repairCost: 6,
   repairAmount: 30,
+  /** Extra condition for winning the optional hands-on minigame. */
+  minigameBonus: 10,
 
   upgradeCost: {
     solar: [12, 18],

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { LaikaMood } from "@/data/dialogue";
 import { LaikaSprite } from "./LaikaSprite";
 
-const PANELS: { title: string; mood: LaikaMood; text: string[] }[] = [
+const PANELS: { title: string; mood: LaikaMood; text: string[]; bullets?: string[] }[] = [
   {
     title: "A different history",
     mood: "idle",
@@ -22,11 +22,16 @@ const PANELS: { title: string; mood: LaikaMood; text: string[] }[] = [
     ],
   },
   {
-    title: "Your orders, Commander",
+    title: "Your mission",
     mood: "alert",
     text: [
-      "Mission Control here. You are the Mission Commander. Keep Laika safe and get the outpost ready for the human crew.",
-      "You have 10 sols (Mars days), limited power and limited materials. You cannot do everything, so choose carefully!",
+      "Keep Laika's Mars outpost running for 10 sols. Manage power, food and life support while getting ready for the first crew.",
+    ],
+    bullets: [
+      "Materials are limited: one upgrade or repair each sol.",
+      "Emergencies will happen. Every choice has a cost.",
+      "Upgrades make buildings stronger. Repairs fix damage.",
+      "The mission ends early if air runs out, if power or food runs out 2 sols in a row, or if radiation hazard reaches 100.",
     ],
   },
 ];
@@ -52,6 +57,13 @@ export function StoryIntro({ onDone }: { onDone: () => void }) {
             {panel.text.map((t) => (
               <p key={t}>{t}</p>
             ))}
+            {panel.bullets && (
+              <ul className="list-disc space-y-1 pl-5 text-[14px]" data-testid="mission-brief">
+                {panel.bullets.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t-[3px] border-ink p-3">

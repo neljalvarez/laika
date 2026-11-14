@@ -9,7 +9,7 @@ import { MODULE_IDS, type GreenhouseMode, type ModuleId, type ModuleState, type 
 import { LaikaFrames } from "./LaikaSprite";
 import { C, ModuleArt, dome, px, type Px } from "./pixel/moduleArt";
 import { gridRects } from "./pixel/PixelSprite";
-import { ICONS } from "./pixel/sprites";
+import { ICONS, type GearItem } from "./pixel/sprites";
 
 export const SCENE_W = 320;
 export const SCENE_H = 180;
@@ -184,6 +184,7 @@ interface OutpostProps {
   flash?: { id: ModuleId; text: string } | null;
   /** Brief celebratory bounce after a successful engineering action. */
   laikaBurst?: boolean;
+  gear?: GearItem[];
 }
 
 export function PixelMarsOutpost({
@@ -201,6 +202,7 @@ export function PixelMarsOutpost({
   interactive = true,
   flash = null,
   laikaBurst = false,
+  gear = [],
 }: OutpostProps) {
   const [hot, setHot] = useState<ModuleId | null>(null);
   const laikaPos = sheltering ? { x: 240, y: 146 } : { x: 124, y: 148 };
@@ -333,7 +335,7 @@ export function PixelMarsOutpost({
       <g className="laika-walker" style={{ transform: `translate(${laikaPos.x}px, ${laikaPos.y}px)` }}>
         <rect x={5} y={25} width={16} height={2} fill={C.rock} fillOpacity={0.45} />
         <g className={mood === "celebrate" ? "laika-hop" : laikaBurst ? "laika-hop-brief" : walking ? undefined : "laika-bob"}>
-          <LaikaFrames mood={mood} walking={walking} />
+          <LaikaFrames mood={mood} walking={walking} gear={gear} />
         </g>
       </g>
 

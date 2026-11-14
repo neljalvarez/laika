@@ -15,6 +15,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
     choices: [
       {
         id: "conserve",
+        idea: "Saving power now keeps the most important systems running.",
+        after: "You saved power for air and water, but the greenhouse will grow no food for 2 sols.",
         label: "Conserve power",
         description: "Switch off the greenhouse and other nonessential loads until the storm passes.",
         cost: {},
@@ -29,6 +31,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "maintain",
+        idea: "Cleaning the part you can control (the panels) keeps more power coming in.",
+        after: "You spent materials, and the panels will keep making much more power during the storm.",
         label: "Protect and sweep panels",
         description: "Use materials to brace the panels and keep brushing the dust away.",
         cost: { materials: 8 },
@@ -42,6 +46,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "accept",
+        idea: "Batteries can cover a gap, but only for so long.",
+        after: "You kept your materials, but the panels got scratched and make less power now.",
         label: "Ride it out",
         description: "Change nothing and let the batteries cover the gap.",
         cost: {},
@@ -67,6 +73,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
     choices: [
       {
         id: "shelter",
+        idea: "Waiting behind thick walls is a real space-safety plan.",
+        after: "Laika stayed safe in the shelter. The hazard rose only a little, but no food grew today.",
         label: "Send Laika to the shelter",
         description: "Laika waits in the Radiation Shelter. Greenhouse work pauses for 1 sol.",
         cost: {},
@@ -88,6 +96,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "reinforce",
+        idea: "More mass between you and space blocks more radiation.",
+        after: "You used materials to thicken the walls. The hazard stays lower for 3 sols.",
         label: "Reinforce the shielding",
         description: "Pile extra material on the shelter walls, then shelter.",
         cost: { materials: 10 },
@@ -104,6 +114,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "stay",
+        idea: "Radiation risk adds up and cannot be undone.",
+        after: "Work went on, but the radiation hazard jumped and will never come back down.",
         label: "Stay in the habitat",
         description: "Keep working as normal with only the thin habitat walls for protection.",
         cost: {},
@@ -129,6 +141,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
     choices: [
       {
         id: "repair",
+        idea: "Fixing the cause usually costs less in the end.",
+        after: "The pump is fixed. Recycling works normally, but you have fewer materials.",
         label: "Repair the pump now",
         description: "Build a replacement part from construction materials.",
         cost: { materials: 8 },
@@ -140,6 +154,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "reserves",
+        idea: "Reserves are a safety margin. Using them leaves less for the next surprise.",
+        after: "The jam is cleared, but your life-support reserve is smaller now.",
         label: "Use reserve water",
         description: "Flush the system with stored water to clear the jam.",
         cost: { lifeSupport: 12 },
@@ -151,6 +167,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "cut",
+        idea: "Running broken equipment gently buys time, not a fix.",
+        after: "You kept your materials, but recycling is slower and the unit still needs a repair.",
         label: "Cut nonessential water use",
         description: "Turn off greenhouse irrigation and run the recycler at half speed.",
         cost: {},
@@ -185,6 +203,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
     choices: [
       {
         id: "clean",
+        idea: "Clean panels turn more sunlight into electricity.",
+        after: "The panels are clean. Full power again, for a few materials.",
         label: "Clean the panels",
         description: "Use a little material to build a brush tool and sweep them.",
         cost: { materials: 4 },
@@ -197,6 +217,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "tolerate",
+        idea: "Hoping the wind helps is a gamble, not a plan.",
+        after: "You saved materials, but power is lower for 3 sols and the panels wore down.",
         label: "Leave the dust",
         description: "Accept lower output and hope the wind clears it.",
         cost: {},
@@ -210,6 +232,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "batteries",
+        idea: "Using less power is another way to balance the energy budget.",
+        after: "The panels are fine, but the greenhouse is off for 2 sols to save power.",
         label: "Lean on the batteries",
         description: "Leave the dust but switch off nonessential loads so the batteries last.",
         cost: {},
@@ -243,6 +267,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
     choices: [
       {
         id: "repair",
+        idea: "Keeping the air sealed in is the habitat's most basic job.",
+        after: "The leak is fixed. No air lost, but you have fewer materials.",
         label: "Replace the seal",
         description: "Make a new seal from construction materials.",
         cost: { materials: 7 },
@@ -254,6 +280,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "reduced",
+        idea: "Closing a room keeps everyone safe but makes the base less ready.",
+        after: "You kept your materials, but the damaged habitat now leaks more air each sol.",
         label: "Close off that room",
         description: "Seal the inner door and live in a smaller space.",
         cost: {},
@@ -266,6 +294,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "reroute",
+        idea: "Covering a leak with extra air spends supplies instead of fixing the cause.",
+        after: "You spent power and air reserve now, and the habitat still has a little damage.",
         label: "Pump in extra air",
         description: "Use power and reserve air to make up for the leak.",
         cost: { power: 8, lifeSupport: 6 },
@@ -291,6 +321,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
     choices: [
       {
         id: "divert",
+        idea: "Plants turn light into food, and on Mars that light needs electricity.",
+        after: "The lamps are back. You spent some battery power, and the crops are safe.",
         label: "Divert power to restart",
         description: "Send a burst of battery power to reheat and restart the lamps.",
         cost: { power: 8 },
@@ -302,6 +334,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "accept",
+        idea: "Less light means slower growth.",
+        after: "You saved power, but harvests are halved for 3 sols.",
         label: "Run on dim lamps",
         description: "Let the greenhouse limp along with weak light.",
         cost: {},
@@ -314,6 +348,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "stored",
+        idea: "Stored food gives engineers time to fix things carefully.",
+        after: "No harvest for 2 sols, but the lamps will come back with no damage.",
         label: "Rely on stored food",
         description: "Shut the lamps down for a slow, careful restart.",
         cost: {},
@@ -338,6 +374,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
     choices: [
       {
         id: "materials",
+        idea: "Every kilogram sent to Mars is expensive, so pick what you need most.",
+        after: "You got 12 materials for upgrades and repairs.",
         label: "Building materials",
         description: "Bring back the crate of spare parts.",
         cost: {},
@@ -349,6 +387,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "food",
+        idea: "Packaged food is reliable, but growing food means less to ship.",
+        after: "You got 6 food, which buys time before harvests.",
         label: "Food packs",
         description: "Bring back the crate of packaged food.",
         cost: {},
@@ -360,6 +400,8 @@ export const EVENTS: Record<EventId, MissionEvent> = {
       },
       {
         id: "air",
+        idea: "Air and water are the hardest things to go without.",
+        after: "You got 12 life support: a bigger safety margin.",
         label: "Air and water tanks",
         description: "Bring back the crate of air and water canisters.",
         cost: {},

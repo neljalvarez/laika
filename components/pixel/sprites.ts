@@ -177,6 +177,36 @@ export const LAIKA_WALK_FRAMES: [Grid, Grid] = [
   patchGrid(LAIKA_BASE, [...WALK_RIGHT, ...TAIL_DOWN]),
 ];
 
+// ---------------------------------------------------------------------------
+// Laika's gear: small cosmetic additions earned by reaching new sols.
+// Drawn on top of any mood frame; never changes gameplay.
+// ---------------------------------------------------------------------------
+export interface GearItem {
+  id: string;
+  name: string;
+  /** Sol that unlocks it. Gear with finale=true needs a successful mission. */
+  sol: number;
+  finale?: boolean;
+  patches: Patch[];
+}
+
+export const GEAR: GearItem[] = [
+  { id: "patch", name: "Mission patch", sol: 2, patches: [[16, 6, "E"], [17, 5, "EEE"], [18, 6, "E"]] },
+  { id: "antenna", name: "Radio antenna", sol: 4, patches: [[0, 5, "R"], [1, 5, "Y"], [2, 5, "Y"]] },
+  { id: "boots", name: "Gold moon boots", sol: 6, patches: [[22, 5, "EEEEE"], [22, 14, "EEEEE"]] },
+  { id: "jetpack", name: "Mini jetpack", sol: 8, patches: [[15, 2, "YY"], [16, 2, "YY"], [17, 2, "YY"], [18, 2, "RR"], [19, 2, "E."]] },
+  { id: "medal", name: "Hero medal", sol: 10, finale: true, patches: [[18, 11, "RR"], [19, 11, "EE"], [20, 11, "EE"]] },
+];
+
+/** Gear earned so far: reached sols, plus the medal for a successful mission. */
+export function earnedGear(sol: number, missionSuccess: boolean): GearItem[] {
+  return GEAR.filter((g) => (g.finale ? missionSuccess : sol >= g.sol));
+}
+
+export function withGear(grid: Grid, gear: GearItem[]): Grid {
+  return gear.length === 0 ? grid : patchGrid(grid, gear.flatMap((g) => g.patches));
+}
+
 export type IconName = "power" | "lifeSupport" | "materials" | "food" | "radiation" | "warning" | "sun" | "dust";
 
 export const ICONS: Record<IconName, Grid> = {

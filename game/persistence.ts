@@ -1,6 +1,7 @@
 // Versioned LocalStorage persistence with guarded browser access.
 import { SAVE_VERSION } from "./config";
 import { normalizeDifficulty } from "./difficulty";
+import { planDailyMission } from "./missions";
 import { MODULE_IDS, type MissionState } from "./types";
 
 export const SAVE_KEY = "laika-mission-red-planet/save";
@@ -65,8 +66,26 @@ export function migrateSave(state: MissionState): MissionState {
     t.v === 2 ? t : { active: t.active, step: t.active ? t.step + 1 : t.step, completed: t.completed ?? !t.active, v: 2 };
   const difficulty = normalizeDifficulty(state.difficulty);
   const deliveries = Array.isArray(state.deliveries) ? state.deliveries : [];
-  if (tutorial === t && difficulty === state.difficulty && deliveries === state.deliveries) return state;
-  return { ...state, tutorial, difficulty, deliveries };
+  const upToDate =
+    tutorial === t &&
+    difficulty === state.difficulty &&
+    deliveries === state.deliveries &&
+    state.dailyMission !== undefined &&
+    Array.isArray(state.missionsDone) &&
+    Array.isArray(state.insights) &&
+    Array.isArray(state.insightQueue);
+  if (upToDate) return state;
+  const merged: MissionState = {
+    ...state,
+    tutorial,
+    difficulty,
+    deliveries,
+    missionsDone: Array.isArray(state.missionsDone) ? state.missionsDone : [],
+    insights: Array.isArray(state.insights) ? state.insights : [],
+    insightQueue: Array.isArray(state.insightQueue) ? state.insightQueue : [],
+  };
+  // Older saves had no daily mission: plan one for the current sol.
+  return state.dailyMission ? merged : { ...merged, dailyMission: planDailyMission(merged) };
 }
 
 export function saveMission(state: MissionState, storage: StorageLike | null = browserStorage()): boolean {

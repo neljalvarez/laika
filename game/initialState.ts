@@ -1,9 +1,15 @@
 import { CONFIG, SAVE_VERSION } from "./config";
 import { DIFFICULTIES, type Difficulty } from "./difficulty";
+import { planDailyMission } from "./missions";
 import { nextRandom } from "./rng";
 import type { MissionState, Weather } from "./types";
 
 export function createInitialState(seed: number, tutorial: boolean, difficulty: Difficulty = "normal"): MissionState {
+  const state = createBaseState(seed, tutorial, difficulty);
+  return { ...state, dailyMission: planDailyMission(state) };
+}
+
+function createBaseState(seed: number, tutorial: boolean, difficulty: Difficulty): MissionState {
   const diff = DIFFICULTIES[difficulty];
   // First roll decides the Sol 2 forecast so it is visible from Sol 1.
   const roll = nextRandom(seed | 0);
@@ -62,5 +68,9 @@ export function createInitialState(seed: number, tutorial: boolean, difficulty: 
     tutorial: { active: tutorial, step: 0, completed: false, v: 2 },
     failureReason: null,
     notice: null,
+    dailyMission: { sol: 1, kind: "safe", done: false },
+    missionsDone: [],
+    insights: [],
+    insightQueue: [],
   };
 }

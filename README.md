@@ -82,6 +82,68 @@ Game formulas, events, scoring and endings are unchanged. Normal difficulty is t
   Deliveries are recorded in the save (`deliveries`), so a reload can never grant one twice. Saves from before
   difficulty existed load as Normal.
 
+## Phase 4 (science learning + player feedback)
+
+Game formulas, events, scoring, endings and difficulty balance are unchanged (the simulated averages per difficulty
+are identical to Phase 3). One documented addition: winning an optional minigame gives **+10 condition** to the
+building being upgraded or repaired (`CONFIG.minigameBonus`). Skipping the minigame gives the normal result.
+
+- **Hidden numbers.** The five resources are vertical bars with no numbers. Hover, focus or tap a bar to see the
+  value, status and last-sol change. Critical bars keep a blinking warning icon, and the red warning strip stays.
+  Before paying for an upgrade or repair, a "Before you pay" box shows every resource.
+- **Laika's speech and the next-step tip are hidden** behind a "!" on Laika and a "?" next to Advance Sol. The "!"
+  turns into "…" once read.
+- **Today's mission.** Each sol suggests one goal from the real state (repair the most damaged building, turn on or
+  boost the greenhouse, upgrade the most useful affordable building, or finish with no meter in the red). It is
+  optional. If an emergency spends the materials it needed, a doable mission replaces it.
+- **Minigames by building:** Sweep the dust (Solar Array, Greenhouse), Tighten the bolts (Habitat, Radiation
+  Shelter), Match the lights (Battery Station, Life Support). They appear after you confirm a build; Close cancels
+  without paying.
+- **Rewards.** The sol splash shows "Sol N survived!" and Laika earns gear on Sols 2, 4, 6 and 8 (patch, antenna,
+  gold boots, jetpack) plus a medal for a successful mission. Cosmetic only.
+- **Science Lab:** five topic cards (Power, Radiation, Recycling, Food, Reliability) plus the real Laika, each with
+  a plain explanation, a verified NASA finding, how the game simplifies it, the linked mechanic, and sources under
+  "More details". Every building has a short "Why does this matter?" with a link to its card.
+- **Event cards** show Cost, Effect now, Later and an Engineering idea for each choice, and after choosing, one line
+  describing what that specific choice did.
+- **Engineering insights** (8): short ideas that appear when a real situation happens (dusty sky, battery covering a
+  shortfall, crops ready, HIGH greenhouse, first build, solar warning handled, recycling upgrade, materials low).
+  Never during emergencies; no rewards; listed in the Science tab.
+- **Debrief:** your best decision, what to improve and one engineering lesson, each picked from the recorded mission.
+- **Mission brief:** the third story panel lists the goal and the exact early-end rules.
+
+### Science sources (checked 2026-11-14)
+
+| Card | Source | Used for |
+| --- | --- | --- |
+| Power on Mars | [NASA JPL, Aug 2018](https://www.jpl.nasa.gov/news/six-things-about-opportunitys-recovery-efforts/) | Opportunity tau 10.8 on 10 June 2018; typical ~0.5; needed < 2.0 |
+| Radiation | [NASA JPL, May 2013](https://www.jpl.nasa.gov/news/data-from-nasa-rovers-voyage-to-mars-aids-planning/) and [SwRI, Dec 2013](https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars) | ~1.8 mSv/day in cruise; ~0.67 mSv/day on the surface |
+| Recycling | [NASA, June 2023](https://www.nasa.gov/missions/station/iss-research/nasa-achieves-water-recovery-milestone-on-international-space-station) | ISS water recovery 98% (was 93–94%) |
+| Food | [NASA, Apr 2014](https://www.nasa.gov/mission_pages/station/research/news/veggie) | Veggie: red/blue/green LEDs, 11.5 × 14.5 in area, food safety a primary goal |
+| Reliability | [NASA 2024 Mars Surface Power Decision (PDF)](https://www.nasa.gov/wp-content/uploads/2024/12/acr24-mars-surface-power-decision.pdf) | Fission chosen as primary crewed-Mars power; dust storms can cut sunlight for weeks or months |
+| The real Laika | [NASA StarChild](https://starchild.gsfc.nasa.gov/docs/StarChild/space_level2/laika.html) | First animal in orbit, Sputnik 2, Nov 1957 |
+
+**Still needs checking by the team:** whether these sources are on your chosen challenge's official Resources page;
+the 0.67 mSv/day figure comes from the RAD instrument team (SwRI), not a nasa.gov page; the StarChild page confirms
+the flight but does not itself state that Laika did not survive (a well-documented fact that should get a NASA
+citation if one is required).
+
+## How to demonstrate (about 3 minutes)
+
+Uses the fixed guided seed, so the first sols are the same every time.
+
+1. **Start New Mission → Normal → keep "Play the training first" ticked → Start Mission.** Press Next twice to show
+   the "Your mission" brief, then Begin Sol 1.
+2. **Training (≈1 min):** Begin Training → click the Solar Array → hover a bar to reveal its number → Next → click
+   the Greenhouse → pick LOW → Next → Preview Next Sol → Back → Advance Sol.
+3. **Sol 2 splash:** "Sol 1 survived!" and Laika's first gear (Mission patch). Continue past the short report.
+4. **Emergency:** Greenhouse Lamp Fault. Point out Cost / Effect now / Engineering idea. Choose "Divert power to
+   restart" and read the one-line result.
+5. **Today's mission: Upgrade the Life Support.** Click Life Support → "Why does this matter?" → Open science card
+   (ISS water recycling) → close → "Upgrade or repair" → Upgrade → show "Before you pay" → Build → play Match the
+   lights → see the reveal (recycling 5 → 8 per sol) and "Daily mission complete".
+6. Hover Laika's "!" to read her line, dismiss the Engineering insight, open the Science tab to show insights found.
+
 ## Project layout
 
 ```text
@@ -171,3 +233,5 @@ Review, then merge with a merge commit or squash. Do not force-push shared branc
   frame-for-frame copy of that sheet (Laika has six moods with two frames each, a blink layer and a 2-frame walk).
 - No achievements.
 - During the tutorial, keyboard focus is limited to the region holding the target, not to the single target control.
+- The Tighten-the-bolts minigame is a timing game; it moves in steps even with reduced motion, and can always be skipped.
+- Daily missions are counted in the debrief but do not change the score.

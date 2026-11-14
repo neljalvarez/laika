@@ -43,14 +43,16 @@ export function canRepair(state: MissionState, id: ModuleId): ActionCheck {
   return { ok: true, reason: null, cost };
 }
 
-export function applyUpgrade(state: MissionState, id: ModuleId): MissionState {
+export function applyUpgrade(state: MissionState, id: ModuleId, bonus = false): MissionState {
   const check = canUpgrade(state, id);
   if (!check.ok) return { ...state, notice: check.reason };
   const level = (state.modules[id].level + 1) as 2 | 3;
+  const before = state.modules[id].condition;
+  const condition = bonus ? clamp(before + CONFIG.minigameBonus, 0, 100) : before;
   return {
     ...state,
     resources: { ...state.resources, materials: state.resources.materials - check.cost },
-    modules: { ...state.modules, [id]: { ...state.modules[id], level } },
+    modules: { ...state.modules, [id]: { level, condition } },
     actionsLeft: state.actionsLeft - 1,
     notice: null,
     metrics: {
@@ -65,17 +67,19 @@ export function applyUpgrade(state: MissionState, id: ModuleId): MissionState {
         sol: state.sol,
         kind: "engineering",
         title: `Upgraded ${MODULES[id].name} to Level ${level}`,
-        detail: `Materials −${check.cost}. ${MODULES[id].levelEffects[level - 1]}`,
+        detail: `Materials −${check.cost}. ${MODULES[id].levelEffects[level - 1]}${
+          bonus && condition > before ? ` Hands-on bonus: condition ${before} → ${condition}.` : ""
+        }`,
       },
     ],
   };
 }
 
-export function applyRepair(state: MissionState, id: ModuleId): MissionState {
+export function applyRepair(state: MissionState, id: ModuleId, bonus = false): MissionState {
   const check = canRepair(state, id);
   if (!check.ok) return { ...state, notice: check.reason };
   const before = state.modules[id].condition;
-  const condition = clamp(before + CONFIG.repairAmount, 0, 100);
+  const condition = clamp(before + CONFIG.repairAmount + (bonus ? CONFIG.minigameBonus : 0), 0, 100);
   return {
     ...state,
     resources: { ...state.resources, materials: state.resources.materials - check.cost },
@@ -94,7 +98,7 @@ export function applyRepair(state: MissionState, id: ModuleId): MissionState {
         sol: state.sol,
         kind: "engineering",
         title: `Repaired ${MODULES[id].name}`,
-        detail: `Materials −${check.cost}. Condition ${before} → ${condition}.`,
+        detail: `Materials −${check.cost}. Condition ${before} → ${condition}.${bonus ? " Hands-on bonus included." : ""}`,
       },
     ],
   };

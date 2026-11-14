@@ -9,6 +9,8 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch } from "react";
 import { getLaikaLine } from "@/data/dialogue";
 import { getNextAction } from "@/data/guidance";
+import { missionText, missionWhy } from "@/game/missions";
+import { INSIGHTS } from "@/game/insights";
 import { MODULES } from "@/data/modules";
 import { SCIENCE_CARDS } from "@/data/science";
 import { TUTORIAL_STAGES, TUTORIAL_TRADEOFF_LINE } from "@/data/tutorial";
@@ -24,7 +26,9 @@ import { Modal } from "./Modal";
 import { BuildingPanel, EngineeringPanel } from "./ModuleInspector";
 import { PixelMarsOutpost } from "./PixelMarsOutpost";
 import { PixelSprite } from "./pixel/PixelSprite";
-import { ICONS } from "./pixel/sprites";
+import { earnedGear, GEAR, ICONS } from "./pixel/sprites";
+import { Minigame } from "./Minigame";
+import { Reveal } from "./Reveal";
 import { ResourceHud, WEATHER_TEXT, WeatherBadge } from "./ResourceHud";
 import { ScienceLab } from "./ScienceLab";
 import { SettingsModal } from "./SettingsModal";
@@ -34,7 +38,7 @@ import { UpgradeReveal } from "./UpgradeReveal";
 
 type Overlay = null | "science" | "howto" | "preview" | "restart" | "settings";
 type Tab = "overview" | "buildings" | "engineering" | "log" | "science";
-type Region = "scene" | "bar" | "panel" | null;
+type Region = "status" | "scene" | "bar" | "panel" | null;
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -73,6 +77,11 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   const [flash, setFlash] = useState<{ id: ModuleId; text: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [reveal, setReveal] = useState<{ id: ModuleId; level: number } | null>(null);
+  const [scienceFocus, setScienceFocus] = useState<string | undefined>(undefined);
+  // A confirmed build waiting on the optional minigame. Dispatched exactly once.
+  const [build, setBuild] = useState<{ kind: "upgrade" | "repair"; id: ModuleId } | null>(null);
+  // Laika's newest line stays hidden behind a "!" until the player opens it.
+  const [seenLine, setSeenLine] = useState<string | null>(null);
 
   const tut = state.tutorial.active ? Math.min(state.tutorial.step, TUTORIAL_STAGES.length - 1) : -1;
   const laika = getLaikaLine(state);
@@ -81,6 +90,22 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   const sim = useMemo(() => simulateSol(state), [state]);
   const gate = canAdvance(state);
   const playing = state.status === "playing";
+  const gear = earnedGear(state.sol, state.status === "success" || state.status === "outstanding");
+  const newGear = GEAR.find((g) => !g.finale && g.sol === state.sol);
+  const lineUnread = laika.text !== seenLine;
+  const mission = state.dailyMission;
+
+  // A finished daily mission gets a short celebration.
+  const doneCount = state.missionsDone.length;
+  const doneRef = useRef(doneCount);
+  useEffect(() => {
+    const before = doneRef.current;
+    doneRef.current = doneCount;
+    if (doneCount <= before) return;
+    setToast(`★ Daily mission complete: ${missionText(state.dailyMission)}!`);
+    const t = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(t);
+  }, [doneCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Feedback after the engine has really applied an upgrade or repair.
   const builtCount = state.metrics.upgradesBuilt + state.metrics.repairsDone;
@@ -110,12 +135,14 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   }, [builtCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const splash = state.reportPending && state.status === "playing" && splashSeenSol !== state.sol;
+  // Insights wait for a calm moment: never over an emergency, report, tutorial or dialog.
+  const calm = playing && !state.reportPending && !state.pendingEvent && !state.eventOutcome && !state.tutorial.active;
   useEffect(() => {
     if (!splash) return;
     const sol = state.sol;
-    const t = window.setTimeout(() => setSplashSeenSol(sol), 1600);
+    const t = window.setTimeout(() => setSplashSeenSol(sol), newGear ? 2600 : 1700);
     return () => window.clearTimeout(t);
-  }, [splash, state.sol]);
+  }, [splash, state.sol, newGear]);
   useEffect(() => {
     if (!state.reportPending) setFullReport(false);
   }, [state.reportPending]);
@@ -157,7 +184,10 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
     liveRegion = "scene";
     if (selected && selected !== "solar") tutorialTask = `That is the ${MODULES[selected].name}. Click the blue SOLAR ARRAY.`;
   }
-  if (tut === 2) tutorialTarget = "#hud-meters";
+  if (tut === 2) {
+    tutorialTarget = "#hud-meters";
+    liveRegion = "status";
+  }
   if (tut === 3) {
     if (selected !== "greenhouse") {
       tutorialTarget = '[data-module="greenhouse"]';
@@ -227,11 +257,34 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
         />
       );
     }
+    if (build) {
+      return (
+        <Minigame
+          moduleId={build.id}
+          kind={build.kind}
+          seed={state.seed + state.sol * 7}
+          onCancel={() => setBuild(null)}
+          onFinish={(bonus) => {
+            const b = build;
+            setBuild(null);
+            dispatch({ type: b.kind === "upgrade" ? "UPGRADE" : "REPAIR", moduleId: b.id, bonus });
+          }}
+        />
+      );
+    }
     if (state.pendingEvent) return <MissionEventModal state={state} dispatch={dispatch} />;
     if (state.eventOutcome) return <EventOutcomeModal state={state} dispatch={dispatch} />;
     switch (overlay) {
       case "science":
-        return <ScienceLab onClose={() => setOverlay(null)} />;
+        return (
+          <ScienceLab
+            focus={scienceFocus}
+            onClose={() => {
+              setOverlay(null);
+              setScienceFocus(undefined);
+            }}
+          />
+        );
       case "howto":
         return <HowToPlay onClose={() => setOverlay(null)} onReplay={state.tutorial.active ? undefined : replayTraining} />;
       case "preview":
@@ -281,6 +334,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   })();
 
   const spotlightOn = stage !== null && modal === null && !splash;
+  const insight = calm && modal === null && state.insightQueue.length > 0 ? INSIGHTS[state.insightQueue[0]] : null;
   // While the spotlight is up, only the region holding the target can be used.
   const locked = (region: Exclude<Region, null>) => (spotlightOn && liveRegion !== region ? true : undefined);
   const weather = WEATHER_TEXT[state.weather];
@@ -294,7 +348,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   return (
     <main className="mx-auto max-w-[1280px] space-y-2 p-2 sm:p-3">
       {/* REGION A — compact status bar */}
-      <header id="region-status" className="panel flex flex-wrap items-stretch gap-2 p-2" inert={spotlightOn ? true : undefined}>
+      <header id="region-status" className="panel flex flex-wrap items-stretch gap-2 p-2" inert={locked("status")}>
         <div className="panel-dark flex flex-col justify-center px-3 py-1 text-center leading-tight" aria-label={`Sol ${state.sol} of ${state.maxSols}`}>
           <div className="text-[10px] font-extrabold uppercase tracking-wide">Sol</div>
           <div className="text-[20px] font-extrabold tabular-nums">
@@ -306,10 +360,10 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
           <PixelSprite grid={ICONS[weather.icon]} scale={2} />
           <div className="text-[10px] font-extrabold uppercase">{weather.label}</div>
         </div>
-        <div id="hud-meters" className="order-last flex min-w-0 flex-1 basis-full lg:order-none lg:basis-0" aria-label="Resource meters">
+        <div id="hud-meters" className="flex min-w-0 items-end" aria-label="Resource meters">
           <ResourceHud state={state} />
         </div>
-        <button type="button" className="btn btn-gray btn-small ml-auto self-center lg:ml-0" onClick={() => setOverlay("settings")} aria-label="Settings: sound, help and restart">
+        <button type="button" className="btn btn-gray btn-small ml-auto self-center" onClick={() => setOverlay("settings")} aria-label="Settings: sound, help and restart">
           ⚙ Settings
         </button>
       </header>
@@ -348,23 +402,65 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               mood={laika.mood}
               sheltering={fx.sheltering}
               highlight={null}
+              gear={gear}
             />
           </div>
 
           {/* One guidance line + the way forward, always visible */}
           <section id="region-bar" className="panel flex flex-wrap items-center gap-3 p-2" aria-label="Laika and next step" inert={locked("bar")}>
-            <div className="border-[3px] border-ink bg-slate p-1">
-              <LaikaSprite mood={laika.mood} scale={2} motion={flash ? "laika-hop-brief" : undefined} />
-            </div>
-            <div className="min-w-[180px] flex-1">
-              <p className="text-[14px] font-bold" aria-live="polite">
+            {/* Laika's words stay hidden behind "!" until hovered, focused or tapped. */}
+            <Reveal
+              side="right"
+              bubbleWidth={260}
+              testId="laika-talk"
+              label={`Laika says: ${laika.text}`}
+              onReveal={() => setSeenLine(laika.text)}
+              trigger={
+                <span className="relative block border-[3px] border-ink bg-slate p-1">
+                  <LaikaSprite mood={laika.mood} scale={2} motion={flash ? "laika-hop-brief" : undefined} gear={gear} />
+                  <span className="bubble-badge" aria-hidden="true" style={lineUnread ? undefined : { background: "#b9c2d6" }}>
+                    {lineUnread ? "!" : "…"}
+                  </span>
+                </span>
+              }
+            >
+              <span className="block text-[11px] font-extrabold uppercase text-maroon">Laika says</span>
+              <span className="block text-[14px] font-bold" data-testid="laika-text">
                 “{laika.text}”
-              </p>
-              <p className="text-[13px]" data-testid="next-action">
-                <span className="tag tag-warn">Next</span> {nextAction}
-              </p>
+              </span>
+            </Reveal>
+            <div className="min-w-[180px] flex-1">
+              <div className="mission-chip" data-testid="daily-mission" data-done={mission.done}>
+                <span aria-hidden="true">{mission.done ? "★" : "☆"}</span>
+                <span>
+                  <span className="text-[10px] font-extrabold uppercase text-maroon">Today&apos;s mission</span>
+                  <span className="block">
+                    {missionText(mission)}
+                    {mission.done ? " — done!" : ""}
+                  </span>
+                </span>
+              </div>
+              <p className="mt-1 text-[12px]">{mission.done ? "Great job! Do anything else you like." : missionWhy(mission)}</p>
             </div>
-            {advanceButton("btn-advance")}
+            <span className="flex items-center gap-2">
+              <Reveal
+                side="above"
+                bubbleWidth={230}
+                testId="advance-hint"
+                label={`Tip before you advance: ${nextAction}`}
+                trigger={
+                  <span className="relative inline-flex h-[34px] w-[34px] items-center justify-center border-[3px] border-ink bg-gold text-[18px] font-extrabold">
+                    ?
+                  </span>
+                }
+              >
+                <span className="block text-[11px] font-extrabold uppercase text-maroon">Before you advance</span>
+                <span className="block text-[13px] font-bold" data-testid="next-action">
+                  {nextAction}
+                </span>
+              </Reveal>
+              {advanceButton("btn-advance")}
+            </span>
           </section>
         </div>
 
@@ -435,24 +531,59 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                 dispatch={dispatch}
                 onSelect={select}
                 onOpenEngineering={() => setTab("engineering")}
+                onOpenScience={(card) => {
+                  setScienceFocus(card);
+                  setOverlay("science");
+                }}
                 onModeChosen={() => {
                   if (tut === 3) setModeTouched(true);
                 }}
               />
             )}
             {tab === "engineering" && (
-              <EngineeringPanel state={state} moduleId={selected} dispatch={dispatch} onSelect={(id) => setSelected(id)} />
+              <EngineeringPanel state={state} moduleId={selected} onStart={(kind, id) => setBuild({ kind, id })} onSelect={(id) => setSelected(id)} />
             )}
             {tab === "log" && <MissionLogList log={state.log} maxHeight={380} compact />}
             {tab === "science" && (
               <div className="space-y-2 text-[14px]">
-                <p>Real space science inspired this game.</p>
-                <ul className="list-disc pl-5 text-[13px]">
+                <p>Real space science behind each building. Tap a card to read it.</p>
+                <div className="grid grid-cols-2 gap-1">
                   {SCIENCE_CARDS.map((c) => (
-                    <li key={c.id}>{c.title}</li>
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="btn btn-gray btn-small"
+                      onClick={() => {
+                        setScienceFocus(c.id);
+                        setOverlay("science");
+                      }}
+                    >
+                      {c.title}
+                    </button>
                   ))}
-                </ul>
-                <button type="button" className="btn w-full" onClick={() => setOverlay("science")}>
+                </div>
+                <div className="border-[3px] border-ink bg-white p-2" data-testid="insights-found">
+                  <div className="text-[12px] font-extrabold uppercase">
+                    Insights found: {state.insights.length}/{Object.keys(INSIGHTS).length}
+                  </div>
+                  {state.insights.length === 0 ? (
+                    <p className="text-[12px]">Play to discover engineering ideas.</p>
+                  ) : (
+                    <ul className="list-disc pl-5 text-[12px]">
+                      {state.insights.map((id) => (
+                        <li key={id}>{INSIGHTS[id].text}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn w-full"
+                  onClick={() => {
+                    setScienceFocus(undefined);
+                    setOverlay("science");
+                  }}
+                >
                   Open Science Lab
                 </button>
               </div>
@@ -508,6 +639,32 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
         </TutorialSpotlight>
       )}
 
+      {insight && (
+        <aside className="insight-card panel" aria-label="Engineering insight" data-testid="insight-card">
+          <div className="panel-title">
+            <span>💡 Engineering insight</span>
+          </div>
+          <div className="space-y-2 p-2 text-[14px]">
+            <p className="font-bold">{insight.text}</p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="btn btn-gray btn-small"
+                onClick={() => {
+                  setScienceFocus(insight.card);
+                  setOverlay("science");
+                  dispatch({ type: "DISMISS_INSIGHT" });
+                }}
+              >
+                Learn more
+              </button>
+              <button type="button" className="btn btn-go btn-small" onClick={() => dispatch({ type: "DISMISS_INSIGHT" })}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
       {toast && (
         <div className="toast" role="status">
           <div className="panel px-3 py-2 text-[14px] font-bold" style={{ background: "#81C995" }}>
@@ -520,6 +677,18 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
           <span className="sol-splash-card panel-dark">
             <span className="block text-[56px] font-extrabold leading-none">SOL {state.sol}</span>
             <span className="mt-2 block text-[16px] font-bold">A new day on Mars.</span>
+            <span className="mt-2 block text-[14px] font-extrabold text-gold" data-testid="sol-survived">
+              ★ Sol {state.sol - 1} survived!
+            </span>
+            {newGear && (
+              <span className="mt-3 flex items-center justify-center gap-3 border-[3px] border-gold p-2" data-testid="gear-unlock">
+                <LaikaSprite mood="celebrate" scale={3} gear={gear} />
+                <span className="text-left">
+                  <span className="block text-[11px] font-extrabold uppercase tracking-widest">New gear for Laika!</span>
+                  <span className="block text-[18px] font-extrabold text-gold">{newGear.name}</span>
+                </span>
+              </span>
+            )}
             <span className="mt-3 block text-[11px] uppercase tracking-widest opacity-80">Click to skip</span>
           </span>
         </button>

@@ -3,21 +3,23 @@
 import { advanceSol, setGreenhouseMode } from "./engine";
 import { resolveEvent } from "./events";
 import { applyRepair, applyUpgrade } from "./upgrades";
+import { detectInsights } from "./insights";
+import { missionCompleted, missionStillPossible, missionText, planDailyMission } from "./missions";
 import type { GameAction, MissionState } from "./types";
 
 export const TUTORIAL_LAST_STEP = 5;
 export const TUTORIAL_VERSION = 2;
 
-export function missionReducer(state: MissionState, action: GameAction): MissionState {
+function baseReducer(state: MissionState, action: GameAction): MissionState {
   switch (action.type) {
     case "BEGIN_MISSION":
       return state.status === "intro" ? { ...state, status: "playing" } : state;
     case "SET_GREENHOUSE_MODE":
       return setGreenhouseMode(state, action.mode);
     case "UPGRADE":
-      return applyUpgrade(state, action.moduleId);
+      return applyUpgrade(state, action.moduleId, action.bonus === true);
     case "REPAIR":
-      return applyRepair(state, action.moduleId);
+      return applyRepair(state, action.moduleId, action.bonus === true);
     case "RESOLVE_EVENT":
       return resolveEvent(state, action.choiceId);
     case "DISMISS_OUTCOME":
@@ -46,7 +48,41 @@ export function missionReducer(state: MissionState, action: GameAction): Mission
       return { ...state, tutorial: { active: true, step: 0, completed: state.tutorial.completed, v: TUTORIAL_VERSION } };
     case "CLEAR_NOTICE":
       return state.notice ? { ...state, notice: null } : state;
+    case "DISMISS_INSIGHT":
+      return state.insightQueue.length > 0 ? { ...state, insightQueue: state.insightQueue.slice(1) } : state;
   }
+}
+
+/**
+ * The game reducer: the base rules, then two pure follow-ups that only add
+ * information (daily-mission progress and engineering insights). Neither
+ * changes resources, buildings, RNG or score.
+ */
+export function missionReducer(state: MissionState, action: GameAction): MissionState {
+  let next = baseReducer(state, action);
+  if (next === state) return state;
+
+  if (missionCompleted(state, next, action.type)) {
+    const m = state.dailyMission;
+    next = {
+      ...next,
+      dailyMission: { ...m, done: true },
+      missionsDone: [...next.missionsDone, m.sol],
+      log: [...next.log, { sol: m.sol, kind: "system", title: "Daily mission complete", detail: `${missionText(m)}. Well done!` }],
+    };
+  }
+  // A new sol gets a new suggested mission.
+  if (next.status === "playing" && next.sol !== state.sol) next = { ...next, dailyMission: planDailyMission(next) };
+  // If an emergency just spent the materials today's mission needed, suggest something doable instead.
+  else if (action.type === "RESOLVE_EVENT" && !next.dailyMission.done && !missionStillPossible(next)) {
+    next = { ...next, dailyMission: planDailyMission(next) };
+  }
+
+  const found = detectInsights(state, next, action);
+  if (found.length > 0) {
+    next = { ...next, insights: [...next.insights, ...found], insightQueue: [...next.insightQueue, ...found] };
+  }
+  return next;
 }
 
 /** Wrapper so the React reducer can also hold "no mission yet" and load saves. */
