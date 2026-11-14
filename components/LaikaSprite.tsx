@@ -1,5 +1,5 @@
 import { gridRects, outlined } from "./pixel/PixelSprite";
-import { LAIKA_FRAMES, LAIKA_WALK_FRAMES, PALETTE, type LaikaVariant } from "./pixel/sprites";
+import { LAIKA_FRAMES, LAIKA_WALK_FRAMES, PALETTE, withGear, type GearItem, type LaikaVariant } from "./pixel/sprites";
 
 const MOOD_LABEL: Record<LaikaVariant, string> = {
   idle: "Laika, calm",
@@ -14,14 +14,18 @@ interface FramesProps {
   mood: LaikaVariant;
   /** Short walk cycle with alternating paws while Laika changes position. */
   walking?: boolean;
+  /** Cosmetic gear earned by reaching new sols. */
+  gear?: GearItem[];
 }
 
 /**
  * Two sprite frames stacked; CSS swaps them in discrete steps (globals.css).
  * Idle adds a separate blink layer and pauses between tail wags.
  */
-export function LaikaFrames({ mood, walking = false }: FramesProps) {
-  const [a, b] = walking ? LAIKA_WALK_FRAMES : LAIKA_FRAMES[mood];
+export function LaikaFrames({ mood, walking = false, gear = [] }: FramesProps) {
+  const [rawA, rawB] = walking ? LAIKA_WALK_FRAMES : LAIKA_FRAMES[mood];
+  const a = withGear(rawA, gear);
+  const b = withGear(rawB, gear);
   const cls = walking ? "laika-walk" : `laika-${mood}`;
   return (
     <g className={`laika ${cls}`}>
@@ -45,10 +49,11 @@ interface SpriteProps {
   scale?: number;
   /** Extra animation class for the whole sprite, e.g. a brief bounce. */
   motion?: string;
+  gear?: GearItem[];
 }
 
 /** Standalone Laika portrait (26×26 sprite pixels including outline). */
-export function LaikaSprite({ mood, scale = 4, motion }: SpriteProps) {
+export function LaikaSprite({ mood, scale = 4, motion, gear = [] }: SpriteProps) {
   return (
     <svg
       width={26 * scale}
@@ -60,7 +65,7 @@ export function LaikaSprite({ mood, scale = 4, motion }: SpriteProps) {
       style={{ imageRendering: "pixelated", flex: "none", overflow: "visible" }}
     >
       <g className={motion}>
-        <LaikaFrames mood={mood} />
+        <LaikaFrames mood={mood} gear={gear} />
       </g>
     </svg>
   );

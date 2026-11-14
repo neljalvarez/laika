@@ -2,38 +2,13 @@
 
 import { getLaikaLine } from "@/data/dialogue";
 import { MODULES } from "@/data/modules";
-import { computeScore, ENDING_RULES, ENDING_TEXT, type ScoreCategoryId } from "@/game/scoring";
+import { bestDecision, engineeringLesson, whatToImprove } from "@/game/debrief";
+import { computeScore, ENDING_RULES, ENDING_TEXT } from "@/game/scoring";
 import { difficultyOf } from "@/game/difficulty";
 import { MODULE_IDS, type MissionState } from "@/game/types";
 import { LaikaSprite } from "./LaikaSprite";
+import { earnedGear } from "./pixel/sprites";
 import { MissionLogList } from "./MissionLog";
-
-const LESSONS: Record<ScoreCategoryId, { weak: string; strong: string }> = {
-  lifeSupport: {
-    weak: "Air and water ran thin. Upgrading the Life Support Unit or Habitat early makes the reserve last longer.",
-    strong: "You kept a healthy air and water reserve. Recycling is what makes long missions possible.",
-  },
-  power: {
-    weak: "The battery ran low. More solar panels or lower greenhouse power on dusty sols keeps essential systems running.",
-    strong: "You balanced power made against power used, even when dust blocked the Sun.",
-  },
-  radiation: {
-    weak: "The radiation hazard climbed high. Stronger shielding and sheltering during solar events slow it down.",
-    strong: "Good shielding choices kept the radiation hazard low.",
-  },
-  food: {
-    weak: "Food got tight. Crops need 2 powered sols before the first harvest, so the greenhouse must start early.",
-    strong: "You planned ahead for the harvest delay and kept Laika fed.",
-  },
-  materials: {
-    weak: "Lots of materials sat unused. Spare parts only help once they are built into the outpost.",
-    strong: "You turned limited materials into useful upgrades and repairs.",
-  },
-  emergency: {
-    weak: "Some emergency choices only delayed the problem. Fixing the cause usually costs less in the end.",
-    strong: "You handled emergencies by fixing causes, not just symptoms.",
-  },
-};
 
 interface Props {
   state: MissionState;
@@ -47,9 +22,12 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
   const ending = ENDING_TEXT[tier];
   const laika = getLaikaLine(state);
   const solsDone = state.history.length;
-  const sorted = [...score.categories].sort((a, b) => a.score / a.max - b.score / b.max);
-  const weak = sorted.filter((c) => c.score / c.max < 0.7).slice(0, 3);
-  const strong = sorted.filter((c) => c.score / c.max >= 0.85).slice(-2);
+  const best = bestDecision(state);
+  const improve = whatToImprove(state, score);
+  const lesson = engineeringLesson(state);
+  const success = state.status === "success" || state.status === "outstanding";
+  const gear = earnedGear(state.sol, success);
+  const missionsOffered = Math.max(1, Math.min(state.sol, state.maxSols));
 
   return (
     <main className="mx-auto max-w-[1100px] space-y-3 p-3">
@@ -62,7 +40,7 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
         </div>
         <div className="flex flex-col items-center gap-4 p-4 sm:flex-row">
           <div className="border-[3px] border-ink bg-slate p-2">
-            <LaikaSprite mood={laika.mood} scale={5} motion={laika.mood === "celebrate" ? "laika-hop-brief" : undefined} />
+            <LaikaSprite mood={laika.mood} scale={5} motion={laika.mood === "celebrate" ? "laika-hop-brief" : undefined} gear={gear} />
           </div>
           <div className="flex-1">
             <h1 className="h-pixel text-[26px] leading-tight">{ending.title}</h1>
@@ -121,20 +99,50 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
         </section>
 
         <section className="panel">
-          <div className="panel-title">Engineering lessons</div>
-          <ul className="list-disc space-y-1 p-3 pl-8 text-[14px]">
-            {weak.map((c) => (
-              <li key={c.id}>
-                <strong>To improve:</strong> {LESSONS[c.id].weak}
-              </li>
-            ))}
-            {strong.map((c) => (
-              <li key={c.id}>
-                <strong>Well done:</strong> {LESSONS[c.id].strong}
-              </li>
-            ))}
-            {weak.length === 0 && strong.length === 0 && <li>A steady, balanced mission. Try a different build order next time!</li>}
-          </ul>
+          <div className="panel-title">What you learned</div>
+          <div className="space-y-2 p-3 text-[14px]" data-testid="debrief-learning">
+            <div className="border-[3px] border-ink bg-white p-2">
+              <div className="h-pixel text-[12px]">
+                <span className="tag tag-ok">★</span> Your best decision
+              </div>
+              {best ? (
+                <>
+                  <p className="font-bold">{best.title}</p>
+                  {best.text && <p className="text-[13px]">{best.text}</p>}
+                </>
+              ) : (
+                <p className="text-[13px]">No single decision stood out. Try making a big choice early next time.</p>
+              )}
+            </div>
+            <div className="border-[3px] border-ink bg-white p-2">
+              <div className="h-pixel text-[12px]">
+                <span className="tag tag-warn">▲</span> What to improve
+              </div>
+              {improve ? (
+                <>
+                  <p className="font-bold">{improve.title}</p>
+                  <p className="text-[13px]">{improve.text}</p>
+                </>
+              ) : (
+                <p className="text-[13px]">Every area scored well. Try a different build order and compare!</p>
+              )}
+            </div>
+            <div className="border-[3px] border-ink bg-white p-2">
+              <div className="h-pixel text-[12px]">
+                <span className="tag" style={{ background: "#6fb1f5" }}>💡</span> Engineering lesson: {lesson.title}
+              </div>
+              <p className="text-[13px]">{lesson.text}</p>
+            </div>
+            <p className="text-[13px]">
+              <strong>Daily missions:</strong> {state.missionsDone.length} of {missionsOffered} completed ·{" "}
+              <strong>Insights found:</strong> {state.insights.length}
+            </p>
+            {gear.length > 0 && (
+              <p className="text-[13px]" data-testid="debrief-gear">
+                <strong>Laika&apos;s gear:</strong> {gear.map((g) => g.name).join(", ")}
+              </p>
+            )}
+          </div>
           <div className="panel-title" style={{ borderTop: "3px solid #2a1a22" }}>
             Final outpost
           </div>
@@ -185,7 +193,9 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
 
         <section className="panel">
           <div className="panel-title">Sol by sol</div>
-          <div className="scroll-y p-3" style={{ maxHeight: 300 }} tabIndex={0} aria-label="Sol by sol resource table">
+          <details className="p-3 pb-0 text-[13px]">
+            <summary className="cursor-pointer font-bold">Show every sol</summary>
+          <div className="scroll-y pb-3" style={{ maxHeight: 300 }} tabIndex={0} aria-label="Sol by sol resource table">
             <table className="report" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
@@ -213,14 +223,16 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
               </tbody>
             </table>
           </div>
+          </details>
         </section>
       </div>
 
       <section className="panel">
         <div className="panel-title">Full mission log</div>
-        <div className="p-3">
-          <MissionLogList log={state.log} maxHeight={260} />
-        </div>
+        <details className="p-3 text-[13px]">
+          <summary className="cursor-pointer font-bold">Show the full log</summary>
+          <MissionLogList log={state.log} maxHeight={260} compact />
+        </details>
       </section>
 
       <div className="flex flex-wrap justify-center gap-3 pb-6">

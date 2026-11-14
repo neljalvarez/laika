@@ -56,10 +56,11 @@ interface BuildingProps {
   onSelect: (id: ModuleId) => void;
   onModeChosen: () => void;
   onOpenEngineering: () => void;
+  onOpenScience: (cardId: string) => void;
 }
 
 /** BUILDINGS tab: what the selected building is and what it is doing right now. */
-export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChosen, onOpenEngineering }: BuildingProps) {
+export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChosen, onOpenEngineering, onOpenScience }: BuildingProps) {
   if (!moduleId) {
     return (
       <div className="space-y-2 text-[14px]">
@@ -118,6 +119,14 @@ export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChose
         </div>
       )}
 
+      <details className="text-[13px]" data-testid="why-matters">
+        <summary className="cursor-pointer font-bold">Why does this matter?</summary>
+        <p className="mt-1">{info.why}</p>
+        <button type="button" className="btn btn-gray btn-small mt-1" onClick={() => onOpenScience(info.card)}>
+          Open science card
+        </button>
+      </details>
+
       <details className="text-[13px]">
         <summary className="cursor-pointer font-bold">More about this building</summary>
         <p className="mt-1">{info.role}</p>
@@ -135,12 +144,41 @@ export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChose
 interface EngineeringProps {
   state: MissionState;
   moduleId: ModuleId | null;
-  dispatch: Dispatch<GameAction>;
+  /** Starts the confirmed action (the dashboard runs the optional minigame, then dispatches). */
+  onStart: (kind: "upgrade" | "repair", id: ModuleId) => void;
   onSelect: (id: ModuleId) => void;
 }
 
+const BEFORE_ROWS: { key: "power" | "lifeSupport" | "materials" | "food" | "radiation"; label: string }[] = [
+  { key: "materials", label: "Materials" },
+  { key: "power", label: "Power" },
+  { key: "lifeSupport", label: "Life Support" },
+  { key: "food", label: "Food" },
+  { key: "radiation", label: "Rad Hazard" },
+];
+
+/** Shows exactly what you have, and what materials will be left, before you pay. */
+function BeforeYouPay({ state, cost }: { state: MissionState; cost: number }) {
+  const r = state.resources;
+  return (
+    <div className="mt-1 border-[2px] border-ink bg-cream p-2 text-[12px]" data-testid="before-you-pay">
+      <div className="font-extrabold uppercase">Before you pay</div>
+      <ul className="grid grid-cols-2 gap-x-3">
+        {BEFORE_ROWS.map(({ key, label }) => (
+          <li key={key} className="flex justify-between gap-2">
+            <span>{label}</span>
+            <strong className="tabular-nums">
+              {key === "materials" ? `${r.materials} → ${r.materials - cost}` : r[key]}
+            </strong>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** ENGINEERING tab: Upgrade and Repair, shown as two clearly different actions. */
-export function EngineeringPanel({ state, moduleId, dispatch, onSelect }: EngineeringProps) {
+export function EngineeringPanel({ state, moduleId, onStart, onSelect }: EngineeringProps) {
   const [confirm, setConfirm] = useState<{ id: ModuleId; kind: "upgrade" | "repair" } | null>(null);
   const mats = state.resources.materials;
 
@@ -194,7 +232,7 @@ export function EngineeringPanel({ state, moduleId, dispatch, onSelect }: Engine
   const afterRepair = Math.min(100, Math.round(m.condition) + CONFIG.repairAmount);
 
   const act = (kind: "upgrade" | "repair") => {
-    dispatch({ type: kind === "upgrade" ? "UPGRADE" : "REPAIR", moduleId });
+    onStart(kind, moduleId);
     setConfirm(null);
   };
 
@@ -226,9 +264,8 @@ export function EngineeringPanel({ state, moduleId, dispatch, onSelect }: Engine
         )}
         {pending === "upgrade" ? (
           <div className="mt-1 border-[3px] border-ink bg-gold p-2" role="alert">
-            <div className="text-[13px] font-bold">
-              Spend {up.cost} materials? ({mats} → {mats - up.cost})
-            </div>
+            <div className="text-[13px] font-bold">Spend {up.cost} materials to upgrade?</div>
+            <BeforeYouPay state={state} cost={up.cost} />
             <div className="mt-1 flex gap-2">
               <button type="button" className="btn btn-go btn-small" onClick={() => act("upgrade")}>
                 Build
@@ -259,9 +296,8 @@ export function EngineeringPanel({ state, moduleId, dispatch, onSelect }: Engine
         </p>
         {pending === "repair" ? (
           <div className="mt-1 border-[3px] border-ink bg-gold p-2" role="alert">
-            <div className="text-[13px] font-bold">
-              Spend {rep.cost} materials? ({mats} → {mats - rep.cost})
-            </div>
+            <div className="text-[13px] font-bold">Spend {rep.cost} materials to repair?</div>
+            <BeforeYouPay state={state} cost={rep.cost} />
             <div className="mt-1 flex gap-2">
               <button type="button" className="btn btn-go btn-small" onClick={() => act("repair")}>
                 Repair

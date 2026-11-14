@@ -173,6 +173,7 @@ export function resolveEvent(s: MissionState, choiceId: string): MissionState {
       eventTitle: event.title,
       choiceLabel: choice.label,
       science: choice.science,
+      after: choice.after,
       changes,
     },
     metrics: { ...s.metrics, materialsSpent: s.metrics.materialsSpent + (choice.cost.materials ?? 0) },

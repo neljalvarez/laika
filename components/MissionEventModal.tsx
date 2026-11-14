@@ -44,7 +44,8 @@ export function MissionEventModal({ state, dispatch }: { state: MissionState; di
               <h3 className="h-pixel text-[14px]">
                 {String.fromCharCode(65 + i)}. {choice.label}
               </h3>
-              <div className="my-1 flex flex-wrap gap-1">
+              <div className="my-1 flex flex-wrap items-center gap-1">
+                <strong className="text-[13px]">Cost:</strong>
                 {costTags(choice).map((t) => (
                   <span key={t} className={`tag ${t.startsWith("−") ? "tag-warn" : "tag-ok"}`}>
                     {t}
@@ -52,10 +53,13 @@ export function MissionEventModal({ state, dispatch }: { state: MissionState; di
                 ))}
               </div>
               <p className="text-[13px]">
-                <strong>Now:</strong> {choice.nearTerm}
+                <strong>Effect now:</strong> {choice.nearTerm}
               </p>
               <p className="text-[13px]">
                 <strong>Later:</strong> {choice.future}
+              </p>
+              <p className="mt-1 border-l-[4px] border-pixelblue pl-2 text-[12px]" data-testid="choice-idea">
+                <strong>Engineering idea:</strong> {choice.idea}
               </p>
               <details className="mb-2 text-[12px]">
                 <summary className="cursor-pointer font-bold">What is this?</summary>
@@ -104,6 +108,11 @@ export function EventOutcomeModal({ state, dispatch }: { state: MissionState; di
       <p>
         You chose: <strong>{o.choiceLabel}</strong>
       </p>
+      {o.after && (
+        <p className="mt-2 border-[3px] border-ink bg-gold p-2 text-[14px] font-bold" data-testid="outcome-after">
+          {o.after}
+        </p>
+      )}
       <div className="mt-2 font-extrabold uppercase">What changed</div>
       <ul className="list-disc pl-5 text-[14px]">
         {o.changes.map((c) => (
@@ -111,7 +120,7 @@ export function EventOutcomeModal({ state, dispatch }: { state: MissionState; di
         ))}
       </ul>
       <div className="mt-2 border-[3px] border-ink bg-white p-2">
-        <div className="font-extrabold uppercase">Why it works this way</div>
+        <div className="font-extrabold uppercase">The science idea</div>
         <p className="text-[14px]">{o.science}</p>
       </div>
     </Modal>

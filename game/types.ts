@@ -1,6 +1,8 @@
 // Canonical types for LAIKA: MISSION RED PLANET.
 // All quantities are abstract game units — never NASA measurements.
 import type { Difficulty } from "./difficulty";
+import type { InsightId } from "./insights";
+import type { DailyMission } from "./missions";
 
 export type ModuleId =
   | "habitat"
@@ -88,6 +90,10 @@ export interface EventChoice {
   future: string;
   /** Short science explanation shown after choosing. */
   science: string;
+  /** One-line engineering idea shown before choosing. */
+  idea: string;
+  /** What this choice actually did, shown right after choosing. */
+  after: string;
   /** 0–1 engineering quality used by the Emergency Response score. */
   quality: number;
 }
@@ -170,6 +176,7 @@ export interface EventOutcome {
   eventTitle: string;
   choiceLabel: string;
   science: string;
+  after: string;
   changes: string[];
 }
 
@@ -237,13 +244,23 @@ export interface MissionState {
   failureReason: string | null;
   /** Last rejected action, shown as a clear message. */
   notice: string | null;
+  /** Today's suggested mission (optional to follow). */
+  dailyMission: DailyMission;
+  /** Sols whose daily mission was completed. */
+  missionsDone: number[];
+  /** Engineering insights the player has met (educational only). */
+  insights: InsightId[];
+  /** Insights waiting to be shown, oldest first. */
+  insightQueue: InsightId[];
 }
 
 export type GameAction =
   | { type: "BEGIN_MISSION" }
   | { type: "SET_GREENHOUSE_MODE"; mode: GreenhouseMode }
-  | { type: "UPGRADE"; moduleId: ModuleId }
-  | { type: "REPAIR"; moduleId: ModuleId }
+  /** bonus: the player won the optional hands-on minigame (+condition). */
+  | { type: "UPGRADE"; moduleId: ModuleId; bonus?: boolean }
+  | { type: "REPAIR"; moduleId: ModuleId; bonus?: boolean }
+  | { type: "DISMISS_INSIGHT" }
   | { type: "RESOLVE_EVENT"; choiceId: string }
   | { type: "DISMISS_OUTCOME" }
   | { type: "ADVANCE_SOL" }

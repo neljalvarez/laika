@@ -95,6 +95,10 @@ export function useGameSounds(mission: MissionState | null): void {
 
     // The new-sol splash appears as soon as the engine has advanced the sol.
     if (mission.sol > before.sol && mission.status === "playing") playSound("sol", 80);
+    // A daily mission finished, or a new piece of gear unlocked: small reward jingle.
+    if (mission.missionsDone.length > before.missionsDone.length) playSound("upgrade", 150);
+    else if (mission.sol > before.sol && [2, 4, 6, 8].includes(mission.sol)) playSound("upgrade", 900);
+    if (mission.insightQueue.length > before.insightQueue.length && !mission.pendingEvent) playSound("tutorial", 600);
 
     const eventVisible = mission.pendingEvent !== null && !mission.reportPending;
     const eventWasVisible = before.pendingEvent !== null && !before.reportPending;

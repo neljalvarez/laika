@@ -12,7 +12,10 @@ export interface TutorialStage {
 export const TUTORIAL_STAGES: TutorialStage[] = [
   {
     title: "Welcome to Mars",
-    lines: ["Welcome, Commander! I'm Laika. This is our Mars outpost!", "Keep it working for 10 sols so the crew can come."],
+    lines: [
+      "Welcome, Commander! I'm Laika. This is our Mars outpost!",
+      "Keep it running for 10 sols so the first crew can come. Each sol I'll suggest a mission.",
+    ],
     task: "Press BEGIN TRAINING.",
     next: "Begin Training",
   },
@@ -23,8 +26,8 @@ export const TUTORIAL_STAGES: TutorialStage[] = [
   },
   {
     title: "Resource Meters",
-    lines: ["These meters show how we are doing.", "They change every sol. Keep Rad Hazard low and the others high!"],
-    task: "Press NEXT.",
+    lines: ["These bars show how we are doing.", "Keep Rad Hazard low and the others high!"],
+    task: "Hover or tap a bar to see its number, then press NEXT.",
     next: "Next",
   },
   {
