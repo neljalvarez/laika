@@ -2,7 +2,7 @@
 
 // The interactive pixel-art outpost. Everything is drawn on a 320×180 logical
 // grid and scaled up with crisp edges. All visuals derive from MissionState.
-import { memo, useState, type KeyboardEvent } from "react";
+import { memo, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MODULES } from "@/data/modules";
 import type { LaikaMood } from "@/data/dialogue";
 import { MODULE_IDS, type GreenhouseMode, type ModuleId, type ModuleState, type Weather } from "@/game/types";
@@ -173,12 +173,17 @@ interface OutpostProps {
   greenhouseMode: GreenhouseMode;
   cropProgress: number;
   charge: number;
+  generation: number;
   selected: ModuleId | null;
   onSelect: (id: ModuleId) => void;
   mood: LaikaMood;
   sheltering: boolean;
   highlight?: ModuleId | null;
   interactive?: boolean;
+  /** Module that was just upgraded or repaired (brief flash + floating text). */
+  flash?: { id: ModuleId; text: string } | null;
+  /** Brief celebratory bounce after a successful engineering action. */
+  laikaBurst?: boolean;
 }
 
 export function PixelMarsOutpost({
@@ -187,15 +192,30 @@ export function PixelMarsOutpost({
   greenhouseMode,
   cropProgress,
   charge,
+  generation,
   selected,
   onSelect,
   mood,
   sheltering,
   highlight = null,
   interactive = true,
+  flash = null,
+  laikaBurst = false,
 }: OutpostProps) {
   const [hot, setHot] = useState<ModuleId | null>(null);
   const laikaPos = sheltering ? { x: 240, y: 146 } : { x: 124, y: 148 };
+
+  // Walk cycle only while Laika is actually changing position (purely visual).
+  const [walking, setWalking] = useState(false);
+  const wasSheltering = useRef(sheltering);
+  useEffect(() => {
+    if (wasSheltering.current === sheltering) return;
+    wasSheltering.current = sheltering;
+    setWalking(true);
+    const timer = window.setTimeout(() => setWalking(false), 1700);
+    return () => window.clearTimeout(timer);
+  }, [sheltering]);
+  const tip = hot ?? highlight;
 
   const onKey = (e: KeyboardEvent<SVGGElement>, id: ModuleId) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -226,12 +246,19 @@ export function PixelMarsOutpost({
           <g
             key={id}
             transform={`translate(${p.x} ${p.y})`}
-            className={`module-hit${highlight === id ? " tutorial-pulse" : ""}`}
+            className={`module-hit${highlight === id ? " tutorial-pulse" : ""}${flash?.id === id ? " module-flash" : ""}${isSel ? " module-selected" : ""}`}
             role={interactive ? "button" : undefined}
             tabIndex={interactive ? 0 : undefined}
             aria-pressed={interactive ? isSel : undefined}
             aria-label={`${info.name}, level ${m.level} of 3, condition ${Math.round(m.condition)} percent, ${conditionWord(m.condition)}`}
-            onClick={interactive ? () => onSelect(id) : undefined}
+            onClick={
+              interactive
+                ? () => {
+                    setHot(id); // touch devices have no hover: a tap shows the tooltip too
+                    onSelect(id);
+                  }
+                : undefined
+            }
             onKeyDown={interactive ? (e) => onKey(e, id) : undefined}
             onMouseEnter={() => setHot(id)}
             onMouseLeave={() => setHot((h) => (h === id ? null : h))}
@@ -240,14 +267,32 @@ export function PixelMarsOutpost({
             data-module={id}
           >
             <rect x={-3} y={-8} width={54} height={62} fill="transparent" />
-            <ModuleArt
-              id={id}
-              level={m.level}
-              condition={m.condition}
-              greenhouseMode={greenhouseMode}
-              cropProgress={cropProgress}
-              charge={charge}
-            />
+            <g className="module-art">
+              <ModuleArt
+                id={id}
+                level={m.level}
+                condition={m.condition}
+                greenhouseMode={greenhouseMode}
+                cropProgress={cropProgress}
+                charge={charge}
+                generation={generation}
+              />
+            </g>
+            {isSel && (
+              // Persistent "selected" marker, distinct from the hover brackets.
+              <g className="select-marker" fill={C.yellow}>
+                <rect x={20} y={-10} width={9} height={1} fill={C.out} />
+                <rect x={21} y={-9} width={7} height={2} />
+                <rect x={22} y={-7} width={5} height={1} />
+                <rect x={23} y={-6} width={3} height={1} />
+                <rect x={24} y={-5} width={1} height={1} />
+              </g>
+            )}
+            {flash?.id === id && (
+              <text x={24} y={-12} textAnchor="middle" className="scene-label scene-label-hot float-up">
+                {flash.text}
+              </text>
+            )}
             {/* Level pips: filled = built */}
             {[0, 1, 2].map((i) => (
               <g key={i}>
@@ -287,12 +332,26 @@ export function PixelMarsOutpost({
 
       <g className="laika-walker" style={{ transform: `translate(${laikaPos.x}px, ${laikaPos.y}px)` }}>
         <rect x={5} y={25} width={16} height={2} fill={C.rock} fillOpacity={0.45} />
-        <g className={mood === "celebrate" ? "laika-hop" : "laika-bob"}>
-          <LaikaFrames mood={mood} />
+        <g className={mood === "celebrate" ? "laika-hop" : laikaBurst ? "laika-hop-brief" : walking ? undefined : "laika-bob"}>
+          <LaikaFrames mood={mood} walking={walking} />
         </g>
       </g>
 
       <DustLayer weather={weather} />
+      {tip && (
+        // Retro status strip: always in the same place, so it never covers a building.
+        <g pointerEvents="none" aria-hidden="true">
+          <rect x={58} y={VIEW_TOP + 3} width={204} height={17} fill={C.out} />
+          <rect x={59} y={VIEW_TOP + 4} width={202} height={15} fill={C.navy} />
+          <rect x={59} y={VIEW_TOP + 4} width={202} height={1} fill={C.blueL} />
+          <text x={160} y={VIEW_TOP + 10.5} textAnchor="middle" className="scene-label scene-label-hot">
+            {MODULES[tip].name.toUpperCase()} · LEVEL {modules[tip].level}
+          </text>
+          <text x={160} y={VIEW_TOP + 16.5} textAnchor="middle" className="scene-label scene-tip">
+            {MODULES[tip].tip}
+          </text>
+        </g>
+      )}
       {/* Keep the unused-id lint quiet and document coverage of all six modules. */}
       <desc>{MODULE_IDS.join(", ")}</desc>
     </svg>

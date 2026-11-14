@@ -20,10 +20,12 @@ interface Props {
   preview?: boolean;
   onClose: () => void;
   closeLabel: string;
+  /** Optional line from Laika shown above the table (tutorial). */
+  note?: string;
 }
 
 /** Itemised before / change / after table. Used for both the real report and the preview. */
-export function SolReportModal({ report, preview = false, onClose, closeLabel }: Props) {
+export function SolReportModal({ report, preview = false, onClose, closeLabel, note }: Props) {
   return (
     <Modal
       title={preview ? `Preview of Sol ${report.sol} (nothing changes yet)` : `End of Sol ${report.sol} Report`}
@@ -41,6 +43,11 @@ export function SolReportModal({ report, preview = false, onClose, closeLabel }:
           ? "This is what will happen if you advance now. Surprise events are not included."
           : "Here is exactly what changed and why."}
       </p>
+      {note && (
+        <p className="mb-2 border-[3px] border-ink bg-gold p-2 text-[14px] font-bold">
+          Laika: “{note}”
+        </p>
+      )}
       <table className="report">
         <thead>
           <tr>

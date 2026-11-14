@@ -3,6 +3,7 @@
 import { LaikaFrames } from "./LaikaSprite";
 import { DustLayer, MarsBackdrop, SCENE_H, SCENE_W } from "./PixelMarsOutpost";
 import { C, dome, px } from "./pixel/moduleArt";
+import { SoundToggle } from "./SoundToggle";
 
 interface Props {
   hasSave: boolean;
@@ -86,6 +87,7 @@ export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onH
           <button type="button" className="btn btn-gray" onClick={onCredits}>
             Credits
           </button>
+          <SoundToggle small={false} />
         </div>
         <p className="border-t-[3px] border-ink p-3 text-[12px]">
           <strong>This story is fiction.</strong> The real Laika flew on Sputnik 2 in 1957 and did not survive. This

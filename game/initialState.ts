@@ -56,7 +56,7 @@ export function createInitialState(seed: number, tutorial: boolean): MissionStat
       repairsDone: 0,
     },
     lastAction: null,
-    tutorial: { active: tutorial, step: 0 },
+    tutorial: { active: tutorial, step: 0, completed: false, v: 2 },
     failureReason: null,
     notice: null,
   };

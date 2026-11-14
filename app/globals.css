@@ -100,7 +100,8 @@ svg {
   min-height: 38px;
 }
 .btn:hover:not(:disabled):not([aria-disabled="true"]) {
-  filter: brightness(1.1);
+  filter: brightness(1.12);
+  transform: translateY(-1px);
 }
 .btn:active:not(:disabled):not([aria-disabled="true"]) {
   transform: translateY(3px);
@@ -238,6 +239,54 @@ a {
   fill: var(--color-gold);
 }
 
+.scene-tip {
+  font-size: 4.4px;
+  font-weight: 700;
+  stroke-width: 1.2px;
+}
+.module-hit:hover .module-art,
+.module-hit:focus .module-art {
+  filter: brightness(1.14);
+}
+.module-selected .module-art {
+  filter: brightness(1.06);
+}
+.laika-blink {
+  opacity: 0;
+}
+.meter-bad {
+  box-shadow:
+    inset 0 0 0 2px var(--color-coral),
+    0 0 0 2px var(--color-coral);
+}
+.meter-delta {
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.toast {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 45;
+  max-width: min(420px, calc(100vw - 24px));
+  pointer-events: none;
+}
+.sol-banner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 70;
+}
+.alert-stripes {
+  height: 8px;
+  background: repeating-linear-gradient(135deg, var(--color-gold) 0 10px, var(--color-ink) 10px 20px);
+  border-bottom: 3px solid var(--color-ink);
+}
+
 .laika-walker {
   transition: transform 1.6s steps(16);
 }
@@ -284,15 +333,80 @@ a {
   80%, 100% { opacity: 0.4; }
 }
 
+/* Idle: a few tail wags, then a natural pause. */
+@keyframes wag-a {
+  0%, 5.9% { opacity: 1; }
+  6%, 11.9% { opacity: 0; }
+  12%, 17.9% { opacity: 1; }
+  18%, 23.9% { opacity: 0; }
+  24%, 100% { opacity: 1; }
+}
+@keyframes wag-b {
+  0%, 5.9% { opacity: 0; }
+  6%, 11.9% { opacity: 1; }
+  12%, 17.9% { opacity: 0; }
+  18%, 23.9% { opacity: 1; }
+  24%, 100% { opacity: 0; }
+}
+@keyframes blink-eyes {
+  0%, 91.9% { opacity: 0; }
+  92%, 95.9% { opacity: 1; }
+  96%, 100% { opacity: 0; }
+}
+@keyframes bob-idle {
+  0%, 61.9% { transform: translateY(0); }
+  62%, 79.9% { transform: translateY(1px); }
+  80%, 100% { transform: translateY(0); }
+}
+@keyframes module-flash {
+  0%, 24.9% { filter: brightness(1.7); }
+  25%, 49.9% { filter: brightness(1); }
+  50%, 74.9% { filter: brightness(1.7); }
+  75%, 100% { filter: brightness(1); }
+}
+@keyframes float-up {
+  0%, 19.9% { transform: translateY(4px); }
+  20%, 39.9% { transform: translateY(2px); }
+  40%, 100% { transform: translateY(0); }
+}
+@keyframes marker-bob {
+  0%, 49.9% { transform: translateY(0); }
+  50%, 100% { transform: translateY(1px); }
+}
+@keyframes sol-banner {
+  0% { transform: translateY(-24px); opacity: 0; }
+  8% { transform: translateY(-8px); opacity: 1; }
+  16%, 84.9% { transform: translateY(0); opacity: 1; }
+  85%, 100% { transform: translateY(8px); opacity: 0; }
+}
+@keyframes toast-in {
+  0% { transform: translateY(8px); }
+  100% { transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .laika-frame-a { animation: frame-a 0.9s infinite; }
   .laika-frame-b { animation: frame-b 0.9s infinite; }
+  .laika-idle .laika-frame-a { animation: wag-a 4.2s infinite; }
+  .laika-idle .laika-frame-b { animation: wag-b 4.2s infinite; }
+  .laika-idle .laika-blink { animation: blink-eyes 5.3s infinite; }
+  .laika-happy .laika-frame-a, .laika-happy .laika-frame-b,
+  .laika-celebrate .laika-frame-a, .laika-celebrate .laika-frame-b { animation-duration: 0.45s; }
+  .laika-concerned .laika-frame-a, .laika-concerned .laika-frame-b { animation-duration: 1.6s; }
+  .laika-walk .laika-frame-a, .laika-walk .laika-frame-b { animation-duration: 0.3s; }
   .laika-alert .laika-frame-a { animation-duration: 0.5s; }
   .laika-alert .laika-frame-b { animation-duration: 0.5s; }
   .laika-resting .laika-frame-a { animation-duration: 1.8s; }
   .laika-resting .laika-frame-b { animation-duration: 1.8s; }
-  .laika-bob { animation: bob 0.9s infinite; }
+  .laika-bob { animation: bob-idle 4.2s infinite; }
   .laika-hop { animation: hop 0.6s infinite; }
+  .laika-hop-brief { animation: hop 0.5s 4; }
+  .blink-slow { animation: blink 2.4s infinite; }
+  .module-flash .module-art { animation: module-flash 0.7s 2; }
+  .float-up { animation: float-up 0.5s 1; }
+  .select-marker { animation: marker-bob 0.8s infinite; }
+  .sol-banner > div { animation: sol-banner 1.5s steps(1, end) forwards; }
+  .toast > div { animation: toast-in 0.2s steps(2, end); }
   .blink { animation: blink 0.8s infinite; }
   .dust-mote { animation: drift 9s linear infinite; }
   .dust-storm .dust-mote { animation-duration: 2.6s; }

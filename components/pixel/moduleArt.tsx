@@ -193,9 +193,11 @@ export interface ModuleArtProps {
   greenhouseMode: GreenhouseMode;
   cropProgress: number;
   charge: number;
+  /** Power the Solar Array is really making this sol (engine value). */
+  generation: number;
 }
 
-export function ModuleArt({ id, level, condition, greenhouseMode, cropProgress, charge }: ModuleArtProps) {
+export function ModuleArt({ id, level, condition, greenhouseMode, cropProgress, charge, generation }: ModuleArtProps) {
   let body: Px[];
   switch (id) {
     case "habitat":
@@ -220,6 +222,20 @@ export function ModuleArt({ id, level, condition, greenhouseMode, cropProgress, 
   return (
     <g>
       {px(body, "b")}
+      {id === "solar" && (
+        // Activity light: lit only when the engine says the array is generating.
+        <g>
+          <rect x={21} y={35} width={5} height={3} fill={C.out} />
+          <rect
+            x={22}
+            y={36}
+            width={3}
+            height={1}
+            fill={generation > 0 ? (generation >= 15 ? C.mint : C.yellow) : C.steelD}
+            className={generation > 0 ? "blink-slow" : undefined}
+          />
+        </g>
+      )}
       {id === "shelter" && <g transform="translate(20 26)">{gridRects(ICONS.radiation, "r")}</g>}
       {px(damage(condition), "d")}
       {condition < 40 && (

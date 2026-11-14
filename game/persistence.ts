@@ -52,6 +52,19 @@ export function validateSave(data: unknown): data is MissionState {
   );
 }
 
+/**
+ * Saves written before the "Welcome" tutorial stage numbered the steps from
+ * "inspect solar" = 0. Shift them by one instead of invalidating the save.
+ */
+export function migrateSave(state: MissionState): MissionState {
+  const t = state.tutorial;
+  if (t.v === 2) return state;
+  return {
+    ...state,
+    tutorial: { active: t.active, step: t.active ? t.step + 1 : t.step, completed: t.completed ?? !t.active, v: 2 },
+  };
+}
+
 export function saveMission(state: MissionState, storage: StorageLike | null = browserStorage()): boolean {
   if (!storage) return false;
   try {
@@ -68,7 +81,7 @@ export function loadMission(storage: StorageLike | null = browserStorage()): Mis
     const raw = storage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data: unknown = JSON.parse(raw);
-    return validateSave(data) ? data : null;
+    return validateSave(data) ? migrateSave(data) : null;
   } catch {
     return null;
   }

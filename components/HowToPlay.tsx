@@ -2,6 +2,7 @@
 
 import { CONFIG } from "@/game/config";
 import { SCIENCE_DISCLAIMER } from "@/data/science";
+import { TUTORIAL_STAGES } from "@/data/tutorial";
 import { Modal } from "./Modal";
 import { PixelSprite } from "./pixel/PixelSprite";
 import { ICONS, type IconName } from "./pixel/sprites";
@@ -34,7 +35,13 @@ const RULES: { icon: IconName; title: string; text: string }[] = [
   },
 ];
 
-export function HowToPlay({ onClose }: { onClose: () => void }) {
+interface HowToPlayProps {
+  onClose: () => void;
+  /** In a mission: restart the guided training without touching mission progress. */
+  onReplay?: () => void;
+}
+
+export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
   return (
     <Modal title="How to Play" onClose={onClose} maxWidth={760}>
       <p className="mb-2">
@@ -64,6 +71,34 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           </li>
         ))}
       </ul>
+      <h2 className="h-pixel mt-3 text-[14px]">Controls</h2>
+      <ul className="list-disc pl-6 text-[13px]">
+        <li>Mouse or touch: click or tap a building to select it. Its name and job appear at the top of the scene.</li>
+        <li>Keyboard: Tab moves between buildings and buttons. Enter or Space selects.</li>
+        <li>The ♪ Sound button turns the 8-bit sound effects on or off. Nothing important is sound-only.</li>
+      </ul>
+      <h2 className="h-pixel mt-3 text-[14px]">Upgrades and events</h2>
+      <ul className="list-disc pl-6 text-[13px]">
+        <li>Each building has 3 levels. Upgrades cost materials and make the building work better for the rest of the mission.</li>
+        <li>Worn or damaged buildings work less well. A repair costs {CONFIG.repairCost} materials and restores {CONFIG.repairAmount}% condition.</li>
+        <li>Events give you 2–3 choices. Each shows its cost now and what happens later. You must choose before the sol continues.</li>
+      </ul>
+      <h2 className="h-pixel mt-3 text-[14px]">Training recap</h2>
+      <ol className="list-decimal pl-6 text-[13px]">
+        {TUTORIAL_STAGES.map((s) => (
+          <li key={s.title}>
+            <strong>{s.title}:</strong> {s.lines[s.lines.length - 1]}
+          </li>
+        ))}
+      </ol>
+      {onReplay && (
+        <div className="mt-2">
+          <button type="button" className="btn btn-small" onClick={onReplay}>
+            Replay guided training
+          </button>
+          <span className="ml-2 text-[12px]">Your mission progress is kept.</span>
+        </div>
+      )}
       <p className="mt-3 text-[13px]">
         Tip: you cannot upgrade everything. Engineers call this a <strong>trade-off</strong>.
       </p>

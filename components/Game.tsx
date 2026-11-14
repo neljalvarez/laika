@@ -15,6 +15,7 @@ import { MissionDebrief } from "./MissionDebrief";
 import { Modal } from "./Modal";
 import { ScienceLab } from "./ScienceLab";
 import { StoryIntro } from "./StoryIntro";
+import { useGameSounds, useUiSounds } from "./useGameSounds";
 
 type MenuOverlay = null | "howto" | "science" | "credits" | "overwrite-guided" | "overwrite-random";
 
@@ -24,6 +25,9 @@ export function Game() {
   const [savedSol, setSavedSol] = useState<number | null>(null);
   const [hasSave, setHasSave] = useState(false);
   const [saveOk, setSaveOk] = useState<boolean | null>(null);
+
+  useUiSounds();
+  useGameSounds(mission);
 
   // Detect an existing save after mount (never during server render).
   useEffect(() => {

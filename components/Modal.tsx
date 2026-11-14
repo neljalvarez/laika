@@ -9,12 +9,14 @@ interface ModalProps {
   onClose?: () => void;
   maxWidth?: number;
   footer?: ReactNode;
+  /** "alert" adds hazard stripes under the title for emergencies. */
+  tone?: "normal" | "alert";
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Accessible pixel-style dialog: focus moves in, Tab is trapped, focus returns on close. */
-export function Modal({ title, children, onClose, maxWidth = 720, footer }: ModalProps) {
+export function Modal({ title, children, onClose, maxWidth = 720, footer, tone = "normal" }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -73,6 +75,7 @@ export function Modal({ title, children, onClose, maxWidth = 720, footer }: Moda
             </button>
           )}
         </div>
+        {tone === "alert" && <div className="alert-stripes" aria-hidden="true" />}
         <div className="p-3 sm:p-4">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t-[3px] border-ink p-3">{footer}</div>}
       </div>
