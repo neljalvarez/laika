@@ -1,0 +1,75 @@
+"use client";
+
+import { useState } from "react";
+import type { LaikaMood } from "@/data/dialogue";
+import { LaikaSprite } from "./LaikaSprite";
+
+const PANELS: { title: string; mood: LaikaMood; text: string[] }[] = [
+  {
+    title: "A different history",
+    mood: "idle",
+    text: [
+      "In 1957, a small dog named Laika became the first animal to orbit Earth. In real life, she did not survive her flight.",
+      "This game tells a made-up story instead. In our story, Laika was rescued and came home a hero.",
+    ],
+  },
+  {
+    title: "A new mission",
+    mood: "happy",
+    text: [
+      "Years later, in our story, humans are getting ready to live on Mars. Someone has to check the outpost first.",
+      "Laika volunteers. Tail wagging, she rides a robot lander down to the Red Planet.",
+    ],
+  },
+  {
+    title: "Your orders, Commander",
+    mood: "alert",
+    text: [
+      "Mission Control here. You are the Mission Commander. Keep Laika safe and get the outpost ready for the human crew.",
+      "You have 10 sols (Mars days), limited power and limited materials. You cannot do everything, so choose carefully!",
+    ],
+  },
+];
+
+export function StoryIntro({ onDone }: { onDone: () => void }) {
+  const [i, setI] = useState(0);
+  const panel = PANELS[i];
+  const last = i === PANELS.length - 1;
+  return (
+    <main className="mx-auto flex min-h-screen max-w-[760px] flex-col justify-center p-3">
+      <section className="panel" aria-live="polite">
+        <div className="panel-title">
+          <span>{panel.title}</span>
+          <span>
+            {i + 1}/{PANELS.length}
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-4 p-4 sm:flex-row sm:items-start">
+          <div className="border-[3px] border-ink bg-slate p-2">
+            <LaikaSprite mood={panel.mood} scale={5} />
+          </div>
+          <div className="space-y-2 text-[16px]">
+            {panel.text.map((t) => (
+              <p key={t}>{t}</p>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap justify-between gap-2 border-t-[3px] border-ink p-3">
+          <button type="button" className="btn btn-gray" onClick={onDone}>
+            Skip story
+          </button>
+          <div className="flex gap-2">
+            {i > 0 && (
+              <button type="button" className="btn btn-gray" onClick={() => setI(i - 1)}>
+                Back
+              </button>
+            )}
+            <button type="button" className="btn btn-go" onClick={() => (last ? onDone() : setI(i + 1))}>
+              {last ? "Begin Sol 1" : "Next"}
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
