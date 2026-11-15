@@ -2,7 +2,7 @@
 
 // The interactive pixel-art outpost. Everything is drawn on a 320×180 logical
 // grid and scaled up with crisp edges. All visuals derive from MissionState.
-import { memo, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { MODULES } from "@/data/modules";
 import type { LaikaMood } from "@/data/dialogue";
 import { MODULE_IDS, type GreenhouseMode, type ModuleId, type ModuleState, type Weather } from "@/game/types";
@@ -15,20 +15,59 @@ import { playSound } from "@/lib/sound";
 export const SCENE_W = 320;
 export const SCENE_H = 180;
 const HORIZON = 96;
-/** The dashboard crops the top of the sky so the outpost fills the frame. */
-const VIEW_TOP = 40;
-/** In "fill" mode the scene may grow upward into extra starry sky, never past this. */
-const MAX_UNITS = 360;
+// ---- Camera -----------------------------------------------------------------
+// The camera frames only the playable outpost: a 236-unit-wide window (the old
+// view was 320 wide, so everything is about 1.36x larger) with roughly a
+// quarter of sky. Building positions are computed from the visible window, so
+// hit areas, brackets, labels and Laika's paths always line up with the art.
+const MIN_VW = 236;
+const MIN_VH = 190;
+const MAX_VH = 330;
+const SKY_SHARE = 0.24;
+const CELL = 76; // 48 of building + a 28-unit lane where Laika can stand
+const GROUND_EXTRA = 200; // extra ground drawn below the original 180-unit art
 
-/** Top-left corner of each module's 48×40 art box. */
-const POSITIONS: Record<ModuleId, { x: number; y: number }> = {
-  solar: { x: 8, y: 88 },
-  habitat: { x: 110, y: 88 },
-  greenhouse: { x: 212, y: 88 },
-  battery: { x: 58, y: 126 },
-  lifeSupport: { x: 162, y: 126 },
-  shelter: { x: 264, y: 126 },
-};
+export interface OutpostLayout {
+  vx: number;
+  vy: number;
+  vw: number;
+  vh: number;
+  /** Top-left corner of each module's 48×40 art box. */
+  pos: Record<ModuleId, { x: number; y: number }>;
+  /** Where Laika stands next to each building (top-left of her 26×26 sprite). */
+  visit: Record<ModuleId, { x: number; y: number }>;
+  home: { x: number; y: number };
+  shelter: { x: number; y: number };
+}
+
+const GRID: ModuleId[][] = [
+  ["solar", "habitat", "greenhouse"],
+  ["battery", "lifeSupport", "shelter"],
+];
+
+/** Pure layout for a frame of the given pixel size (exported for tests). */
+export function computeLayout(width: number, height: number): OutpostLayout {
+  const aspect = width > 0 && height > 0 ? width / height : MIN_VW / MIN_VH;
+  const vh = Math.round(Math.min(MAX_VH, Math.max(MIN_VH, MIN_VW / aspect)));
+  const vw = Math.round(Math.min(SCENE_W, Math.max(MIN_VW, vh * aspect)));
+  const vx = Math.round((SCENE_W - vw) / 2);
+  const vy = HORIZON - Math.round(vh * SKY_SHARE);
+  const extra = vy + vh - HORIZON - 144; // ground depth beyond the minimum
+  const cell = Math.max(CELL, Math.floor((vw - 8) / 3));
+  const x0 = vx + Math.round((vw - cell * 3) / 2) + Math.floor((cell - 48) / 2) - 8;
+  const rows = [HORIZON + 2 + Math.round(extra * 0.35), HORIZON + 74 + Math.round(extra * 0.75)];
+  const pos = {} as OutpostLayout["pos"];
+  const visit = {} as OutpostLayout["visit"];
+  GRID.forEach((row, r) =>
+    row.forEach((id, c) => {
+      pos[id] = { x: x0 + c * cell, y: rows[r] };
+      visit[id] = { x: x0 + c * cell + 47, y: rows[r] + 20 };
+    }),
+  );
+  const home = { x: pos.battery.x + 47, y: pos.battery.y + 24 };
+  visit.battery = { x: pos.battery.x + 34, y: pos.battery.y + 24 }; // home is beside it already
+  return { vx, vy, vw, vh, pos, visit, home, shelter: { x: pos.shelter.x - 25, y: pos.shelter.y + 22 } };
+}
 const DRAW_ORDER: ModuleId[] = ["solar", "habitat", "greenhouse", "battery", "lifeSupport", "shelter"];
 
 // Deterministic pseudo-random scatter so the art is identical on every render.
@@ -104,31 +143,48 @@ const BACKDROP: Px[] = (() => {
   return a;
 })();
 
+// More ground below the original art, for the closer gameplay camera.
+const GROUND_EXT: Px[] = (() => {
+  const a: Px[] = [[0, SCENE_H, SCENE_W, GROUND_EXTRA, C.rust]];
+  const r = scatter(240, 91);
+  for (let i = 0; i < 240; i += 3) {
+    a.push([Math.floor(r[i] * SCENE_W), SCENE_H + Math.floor(r[i + 1] * GROUND_EXTRA), r[i + 2] > 0.5 ? 3 : 2, 1, r[i + 2] > 0.6 ? C.sand : "#8a3f33"]);
+  }
+  for (const [x, y] of [[70, 196], [200, 214], [118, 250], [262, 238], [150, 290], [60, 320]] as const) {
+    a.push([x, y, 6, 3, C.rock], [x + 1, y - 1, 4, 1, C.rock], [x + 1, y, 2, 1, "#8a3f33"]);
+  }
+  return a;
+})();
+
 const STARS: Px[] = scatter(60, 5)
   .reduce<Px[]>((acc, v, i, arr) => {
     if (i % 2 === 0) acc.push([Math.floor(v * SCENE_W), Math.floor(arr[i + 1] * 62), 1, 1, i % 6 === 0 ? C.yellow : C.cream]);
     return acc;
   }, []);
 
-const CABLES: Px[] = (() => {
-  const a: Px[] = [[30, 147, 260, 2, C.steelD], [30, 147, 260, 1, C.steel]];
-  for (const id of ["solar", "habitat", "greenhouse"] as ModuleId[]) {
-    const p = POSITIONS[id];
-    a.push([p.x + 23, p.y + 40, 2, 148 - (p.y + 40), C.steelD]);
+function cables(l: OutpostLayout): Px[] {
+  const y = l.pos.battery.y + 21;
+  const x1 = l.pos.battery.x + 10;
+  const x2 = l.pos.shelter.x + 38;
+  const a: Px[] = [[x1, y, x2 - x1, 2, C.steelD], [x1, y, x2 - x1, 1, C.steel]];
+  for (const id of GRID[0]) {
+    const p = l.pos[id];
+    a.push([p.x + 23, p.y + 40, 2, y + 1 - (p.y + 40), C.steelD]);
   }
-  for (let x = 30; x < 290; x += 20) a.push([x, 146, 3, 4, C.orange], [x, 146, 3, 1, C.yellow]);
+  for (let x = x1; x < x2; x += 20) a.push([x, y - 1, 3, 4, C.orange], [x, y - 1, 3, 1, C.yellow]);
   return a;
-})();
+}
 
 const DUST: { x: number; y: number; d: number; w: number }[] = scatter(54, 31).reduce<
   { x: number; y: number; d: number; w: number }[]
 >((acc, v, i, arr) => {
-  if (i % 3 === 0) acc.push({ x: Math.floor(v * SCENE_W), y: 50 + Math.floor(arr[i + 1] * 120), d: arr[i + 2] * 8, w: 1 + (i % 2) });
+  if (i % 3 === 0) acc.push({ x: Math.floor(v * SCENE_W), y: 50 + Math.floor(arr[i + 1] * 250), d: arr[i + 2] * 8, w: 1 + (i % 2) });
   return acc;
 }, []);
 
 /** Sky, mountains and ground only — reused on the title screen. */
 // Extra night sky above the original 320×180 art, used when the scene is taller.
+const MAX_UNITS = 360;
 const DEEP_SKY: Px[] = (() => {
   const depth = MAX_UNITS - 140;
   // Stepped bands that blend into the original sky (#141C32 at y=0): no visible seam.
@@ -181,8 +237,9 @@ export const MarsBackdrop = memo(function MarsBackdrop({ weather }: { weather: W
       <g className="stars">{px(STARS, "st")}</g>
       {weather !== "STORM" && <g>{px([...dome(252, 56, 5, C.cream), [247, 56, 10, 4, C.cream], [248, 60, 8, 1, C.cream]], "sun")}</g>}
       {px(BACKDROP.slice(SKY_BANDS.length), "bg")}
+      {px(GROUND_EXT, "gx")}
       {weather !== "CLEAR" && (
-        <rect x={0} y={0} width={SCENE_W} height={SCENE_H} fill={C.sand} fillOpacity={weather === "STORM" ? 0.34 : 0.14} />
+        <rect x={0} y={0} width={SCENE_W} height={SCENE_H + GROUND_EXTRA} fill={C.sand} fillOpacity={weather === "STORM" ? 0.34 : 0.14} />
       )}
     </g>
   );
@@ -242,16 +299,6 @@ interface OutpostProps {
   talking?: boolean;
 }
 
-/** Safe standing spots next to each building (top-left of Laika's 26×26 sprite). */
-const VISIT_SPOTS: Record<ModuleId, { x: number; y: number }> = {
-  solar: { x: 50, y: 108 },
-  habitat: { x: 152, y: 108 },
-  greenhouse: { x: 254, y: 108 },
-  battery: { x: 100, y: 146 },
-  lifeSupport: { x: 138, y: 146 },
-  shelter: { x: 240, y: 146 },
-};
-
 export function PixelMarsOutpost({
   modules,
   weather,
@@ -272,26 +319,28 @@ export function PixelMarsOutpost({
   visit = null,
   talking = false,
 }: OutpostProps) {
-  // How many scene units tall the view is. 140 = the original framing.
+  // The camera window follows the frame's shape, so the outpost always fills it.
   const svgRef = useRef<SVGSVGElement>(null);
-  const [units, setUnits] = useState(SCENE_H - VIEW_TOP);
+  const [size, setSize] = useState<{ w: number; h: number }>({ w: MIN_VW, h: MIN_VH });
   useEffect(() => {
     const frame = svgRef.current?.parentElement;
     if (!fill || !frame || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       const { width, height } = frame.getBoundingClientRect();
       if (width < 10 || height < 10) return;
-      const want = Math.round((SCENE_W * height) / width);
-      setUnits(Math.max(SCENE_H - VIEW_TOP, Math.min(MAX_UNITS, want)));
+      setSize((s) => (s.w === Math.round(width) && s.h === Math.round(height) ? s : { w: Math.round(width), h: Math.round(height) }));
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(frame);
     return () => ro.disconnect();
   }, [fill]);
-  const top = fill ? SCENE_H - units : VIEW_TOP;
+  const layout = useMemo(() => (fill ? computeLayout(size.w, size.h) : computeLayout(MIN_VW, MIN_VH)), [fill, size]);
+  const cableArt = useMemo(() => cables(layout), [layout]);
+  const top = layout.vy;
+  const midX = layout.vx + layout.vw / 2;
   const [hot, setHot] = useState<ModuleId | null>(null);
-  const homePos = sheltering ? { x: 240, y: 146 } : { x: 124, y: 148 };
+  const homePos = sheltering ? layout.shelter : layout.home;
   // Presentation only: go → cheer → back. The upgrade itself is already done.
   const [trip, setTrip] = useState<{ id: ModuleId; phase: "go" | "cheer" | "back" } | null>(null);
   const visitKey = visit?.key ?? 0;
@@ -312,7 +361,7 @@ export function PixelMarsOutpost({
     };
     // Only a new visit key starts a trip.
   }, [visitKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const laikaPos = trip && trip.phase !== "back" ? VISIT_SPOTS[trip.id] : homePos;
+  const laikaPos = trip && trip.phase !== "back" ? layout.visit[trip.id] : homePos;
   const tripWalking = trip !== null && trip.phase !== "cheer";
   const cheering = trip?.phase === "cheer";
 
@@ -339,17 +388,18 @@ export function PixelMarsOutpost({
     <svg
       ref={svgRef}
       className={`outpost-svg${fill ? " outpost-fill" : ""}`}
-      viewBox={`0 ${top} ${SCENE_W} ${SCENE_H - top}`}
+      viewBox={`${layout.vx} ${layout.vy} ${layout.vw} ${layout.vh}`}
+      data-camera={`${layout.vw}x${layout.vh}`}
       preserveAspectRatio="xMidYMax meet"
       shapeRendering="crispEdges"
       role="group"
       aria-label={`Mars outpost. Weather: ${weather.toLowerCase()}. Select a module to inspect it.`}
     >
       <MarsBackdrop weather={weather} />
-      {px(CABLES, "cb")}
+      {px(cableArt, "cb")}
 
       {DRAW_ORDER.map((id) => {
-        const p = POSITIONS[id];
+        const p = layout.pos[id];
         const m = modules[id];
         const isSel = selected === id;
         const isHot = hot === id;
@@ -457,13 +507,13 @@ export function PixelMarsOutpost({
       {tip && (
         // Retro status strip: always in the same place, so it never covers a building.
         <g pointerEvents="none" aria-hidden="true">
-          <rect x={58} y={top + 3} width={204} height={17} fill={C.out} />
-          <rect x={59} y={top + 4} width={202} height={15} fill={C.navy} />
-          <rect x={59} y={top + 4} width={202} height={1} fill={C.blueL} />
-          <text x={160} y={top + 10.5} textAnchor="middle" className="scene-label scene-label-hot">
+          <rect x={midX - 102} y={top + 3} width={204} height={17} fill={C.out} />
+          <rect x={midX - 101} y={top + 4} width={202} height={15} fill={C.navy} />
+          <rect x={midX - 101} y={top + 4} width={202} height={1} fill={C.blueL} />
+          <text x={midX} y={top + 10.5} textAnchor="middle" className="scene-label scene-label-hot">
             {MODULES[tip].name.toUpperCase()} · LEVEL {modules[tip].level}
           </text>
-          <text x={160} y={top + 16.5} textAnchor="middle" className="scene-label scene-tip">
+          <text x={midX} y={top + 16.5} textAnchor="middle" className="scene-label scene-tip">
             {MODULES[tip].tip}
           </text>
         </g>

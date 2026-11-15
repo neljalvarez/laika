@@ -256,3 +256,15 @@ Review, then merge with a merge commit or squash. Do not force-push shared branc
 - **Grade.** The debrief now shows a letter grade (A+ 90, A 80, B 70, C 60).
 
 The story is fiction: the real Laika flew on Sputnik 2 in 1957 and did not survive. This project is not affiliated with or endorsed by NASA.
+
+## Phase 6: final polish
+
+- **Closer camera.** The gameplay scene now frames only the outpost: a 236-unit-wide window instead of 320 (about 1.36x larger), with the sky held to roughly a quarter of the scene. Building positions, hit areas, labels, cables and Laika's walking spots are all computed from the visible window (`computeLayout` in `components/PixelMarsOutpost.tsx`), so nothing is stretched or clipped.
+- **Opening.** Once per browser session: a 2-second memorial on black ("In Loving Memory of Laika"), while the title-screen rocket descends underneath; the rocket lands at 3.0 s with a small dust puff and the menu appears by 3.5 s. Reduced-motion settings skip the movement.
+- **Memorial photograph: not included yet.** No photograph with verified reuse rights could be obtained while building this phase, so the memorial shows the dedication text only. To add one, save a genuine historical photograph with documented rights as `public/memorial/laika.jpg` and fill in `MEMORIAL_PHOTO` in `data/memorial.ts` (source, credit, licence). The Credits screen then shows the attribution automatically.
+- **Music.** The two tracks supplied by the team, "Against the Crimson Sky" and "Last Light On The Ridge" (`public/audio/`, original MP3 files, unmodified), play one after the other in a loop from a single audio element. Music pauses and resumes rather than restarting. The team is responsible for confirming it holds the rights to publish these tracks.
+- **Volume sliders.** Settings has Master, Music, Ambience and Sound effects, each with an on/off switch and a 0-100% slider (defaults 70 / 40 / 30 / 60). They act immediately, work with mouse, keyboard and touch, and are saved in the browser.
+
+### Deploying
+
+The project is a standard Next.js app with no backend or environment variables. On Vercel: import the GitHub repository, keep the default Next.js settings, and deploy `main`. Locally: `npm install`, `npm run build`, `npm start`.

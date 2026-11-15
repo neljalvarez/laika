@@ -10,13 +10,17 @@ import {
   getAudioPrefs,
   isSoundEnabled,
   playSound,
+  getAudioVolumes,
   SERVER_PREFS,
+  SERVER_VOLUMES,
   setAudioPref,
+  setAudioVolume,
   setSoundEnabled,
   subscribeSound,
   unlockAudio,
   type AudioPrefKey,
   type AudioPrefs,
+  type AudioVolumes,
 } from "@/lib/sound";
 
 const INTERACTIVE = 'button, [role="button"], a[href]';
@@ -117,6 +121,11 @@ export function useSoundEnabled(): [boolean, (on: boolean) => void] {
 }
 
 /** All four audio switches (music, ambience, sound effects, master). */
+export function useAudioVolumes(): [AudioVolumes, (key: AudioPrefKey, value: number) => void] {
+  const v = useSyncExternalStore(subscribeSound, getAudioVolumes, () => SERVER_VOLUMES);
+  return [v, setAudioVolume];
+}
+
 export function useAudioPrefs(): [AudioPrefs, (key: AudioPrefKey, on: boolean) => void] {
   const prefs = useSyncExternalStore(subscribeSound, getAudioPrefs, () => SERVER_PREFS);
   return [prefs, setAudioPref];

@@ -74,7 +74,22 @@ export interface AudioPrefs {
 }
 export type AudioPrefKey = keyof AudioPrefs;
 
-const DEFAULT_PREFS: AudioPrefs = { master: true, music: false, ambience: true, sfx: true };
+const DEFAULT_PREFS: AudioPrefs = { master: true, music: true, ambience: true, sfx: true };
+
+/** Volume of each channel, 0–100. "master" scales everything. */
+export type AudioVolumes = Record<AudioPrefKey, number>;
+const DEFAULT_VOLUMES: AudioVolumes = { master: 70, music: 40, ambience: 30, sfx: 60 };
+const VOLUME_KEY = `${PREF_KEY}/volumes`;
+let volumes: AudioVolumes = DEFAULT_VOLUMES;
+// Channel trims chosen so the default sliders sound balanced: the supplied
+// music is mastered loud, the synthesized effects and wind are quiet.
+const TRIM: Record<Exclude<AudioPrefKey, "master">, number> = { music: 0.5, ambience: 4.5, sfx: 2.4 };
+
+/** Actual linear gain for a channel (0 when it or the master is off). Exported for tests. */
+export function channelGain(key: Exclude<AudioPrefKey, "master">, p: AudioPrefs = prefs, v: AudioVolumes = volumes): number {
+  if (!p.master || !p[key]) return 0;
+  return (v.master / 100) * (v[key] / 100) * TRIM[key];
+}
 const PREF_KEYS: Record<AudioPrefKey, string> = {
   master: PREF_KEY, // same key as before, so an earlier mute is respected
   music: `${PREF_KEY}/music`,
@@ -106,6 +121,47 @@ function loadPref(): void {
     // Storage blocked: defaults apply for this session.
   }
   prefs = next;
+  try {
+    const raw = window.localStorage.getItem(VOLUME_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<AudioVolumes>;
+      const v = { ...DEFAULT_VOLUMES };
+      for (const key of Object.keys(v) as AudioPrefKey[]) {
+        const n = Number(saved[key]);
+        if (Number.isFinite(n)) v[key] = Math.max(0, Math.min(100, Math.round(n)));
+      }
+      volumes = v;
+    }
+  } catch {
+    // Bad or blocked storage: default volumes.
+  }
+}
+
+// Effects and ambience run through one gain node each, so sliders act at once.
+let sfxBus: GainNode | null = null;
+let ambienceBus: GainNode | null = null;
+function bus(kind: "sfx" | "ambience", audio: AudioContext): GainNode {
+  let node = kind === "sfx" ? sfxBus : ambienceBus;
+  if (!node || node.context !== audio) {
+    node = audio.createGain();
+    node.gain.value = channelGain(kind);
+    node.connect(audio.destination);
+    if (kind === "sfx") sfxBus = node;
+    else ambienceBus = node;
+  }
+  return node;
+}
+function applyVolumes(): void {
+  try {
+    if (ctx) {
+      // Short glide instead of a jump, so moving a slider never clicks.
+      sfxBus?.gain.setTargetAtTime(channelGain("sfx"), ctx.currentTime, 0.03);
+      ambienceBus?.gain.setTargetAtTime(channelGain("ambience"), ctx.currentTime, 0.03);
+    }
+    if (music && !music.fading) music.el.volume = Math.min(1, channelGain("music"));
+  } catch {
+    // Audio must never break the game.
+  }
 }
 
 function getContext(): AudioContext | null {
@@ -129,101 +185,92 @@ function getContext(): AudioContext | null {
 // however often React components mount, unmount or re-render.
 // ---------------------------------------------------------------------------
 
-const midi = (n: number): number => 440 * Math.pow(2, (n - 69) / 12);
-
-/** Original 8-bar loop in A minor (Am – F – C – G, twice). 0 = rest. */
-const MUSIC_LEAD: number[] = [
-  69, 0, 72, 0, 76, 0, 72, 0,
-  69, 0, 72, 0, 77, 0, 72, 0,
-  67, 0, 72, 0, 76, 0, 79, 0,
-  67, 0, 71, 0, 74, 0, 71, 0,
-  76, 0, 72, 0, 69, 0, 72, 0,
-  77, 0, 72, 0, 69, 0, 0, 0,
-  76, 0, 79, 0, 76, 0, 72, 0,
-  74, 0, 71, 0, 67, 0, 0, 0,
+/**
+ * Background music: the two tracks supplied by the team, played one after the
+ * other in an endless loop. A single <audio> element exists for the whole app,
+ * so switching tabs, opening Settings or advancing a sol never restarts it.
+ */
+export const MUSIC_TRACKS: { title: string; src: string }[] = [
+  { title: "Against the Crimson Sky", src: "/audio/against-the-crimson-sky.mp3" },
+  { title: "Last Light On The Ridge", src: "/audio/last-light-on-the-ridge.mp3" },
 ];
-const MUSIC_BASS: number[] = [45, 41, 48, 43, 45, 41, 48, 43];
-const STEP_SECONDS = 60 / 84 / 2; // eighth notes at a slow 84 BPM
-const MUSIC_LEAD_GAIN = 0.018;
-const MUSIC_BASS_GAIN = 0.045;
 const AMBIENCE_GAIN = 0.03;
 
-interface MusicLayer {
-  out: GainNode;
-  timer: number;
-  step: number;
-  nextTime: number;
+interface MusicPlayer {
+  el: HTMLAudioElement;
+  track: number;
+  playing: boolean;
+  fading: boolean;
+  fadeTimer: number | null;
 }
+let music: MusicPlayer | null = null;
 interface AmbienceLayer {
   out: GainNode;
   nodes: AudioScheduledSourceNode[];
 }
-let musicLayer: MusicLayer | null = null;
 let ambienceLayer: AmbienceLayer | null = null;
 
-function tone(audio: AudioContext, out: AudioNode, wave: OscillatorType, freq: number, at: number, dur: number, gain: number): void {
-  const osc = audio.createOscillator();
-  const amp = audio.createGain();
-  osc.type = wave;
-  osc.frequency.setValueAtTime(freq, at);
-  amp.gain.setValueAtTime(0, at);
-  amp.gain.linearRampToValueAtTime(gain, at + 0.02);
-  amp.gain.setValueAtTime(gain, at + dur * 0.6);
-  amp.gain.linearRampToValueAtTime(0, at + dur);
-  osc.connect(amp);
-  amp.connect(out);
-  osc.start(at);
-  osc.stop(at + dur + 0.02);
-}
-
-function scheduleMusic(audio: AudioContext): void {
-  const layer = musicLayer;
-  if (!layer) return;
-  // Look a little ahead so timing stays steady even if the tab is busy.
-  if (layer.nextTime < audio.currentTime) layer.nextTime = audio.currentTime + 0.05;
-  while (layer.nextTime < audio.currentTime + 0.6) {
-    const lead = MUSIC_LEAD[layer.step];
-    if (lead) tone(audio, layer.out, "square", midi(lead), layer.nextTime, STEP_SECONDS * 1.7, MUSIC_LEAD_GAIN);
-    if (layer.step % 8 === 0) {
-      tone(audio, layer.out, "triangle", midi(MUSIC_BASS[layer.step / 8]), layer.nextTime, STEP_SECONDS * 7.5, MUSIC_BASS_GAIN);
-    }
-    layer.step = (layer.step + 1) % MUSIC_LEAD.length;
-    layer.nextTime += STEP_SECONDS;
-  }
-}
-
-function startMusic(audio: AudioContext): void {
-  if (musicLayer) return;
-  const out = audio.createGain();
-  out.gain.setValueAtTime(0, audio.currentTime);
-  out.gain.linearRampToValueAtTime(1, audio.currentTime + 0.8);
-  out.connect(audio.destination);
-  const timer = window.setInterval(() => {
+function fadeMusic(player: MusicPlayer, target: () => number, ms: number, done?: () => void): void {
+  if (player.fadeTimer !== null) window.clearInterval(player.fadeTimer);
+  const from = player.el.volume;
+  const steps = Math.max(1, Math.round(ms / 40));
+  let i = 0;
+  player.fading = true;
+  player.fadeTimer = window.setInterval(() => {
+    i++;
     try {
-      scheduleMusic(audio);
+      // The target is read every step, so a slider moved mid-fade is honoured.
+      player.el.volume = Math.max(0, Math.min(1, from + ((target() - from) * i) / steps));
     } catch {
-      // Ignore: music is decoration only.
+      i = steps;
     }
-  }, 150);
-  musicLayer = { out, timer, step: 0, nextTime: audio.currentTime + 0.1 };
-  scheduleMusic(audio);
+    if (i >= steps) {
+      if (player.fadeTimer !== null) window.clearInterval(player.fadeTimer);
+      player.fadeTimer = null;
+      player.fading = false;
+      done?.();
+    }
+  }, 40);
 }
 
-function stopMusic(audio: AudioContext | null): void {
-  const layer = musicLayer;
-  if (!layer) return;
-  musicLayer = null;
-  window.clearInterval(layer.timer);
-  try {
-    if (audio) {
-      layer.out.gain.cancelScheduledValues(audio.currentTime);
-      layer.out.gain.setValueAtTime(layer.out.gain.value, audio.currentTime);
-      layer.out.gain.linearRampToValueAtTime(0, audio.currentTime + 0.25);
-    }
-    window.setTimeout(() => layer.out.disconnect(), 400);
-  } catch {
-    // Already gone.
+function startMusic(): void {
+  if (typeof Audio === "undefined") return;
+  if (!music) {
+    const el = new Audio();
+    el.preload = "auto";
+    el.src = MUSIC_TRACKS[0].src;
+    const player: MusicPlayer = { el, track: 0, playing: false, fading: false, fadeTimer: null };
+    // When one track ends the next begins, and the pair repeats forever.
+    el.addEventListener("ended", () => {
+      player.track = (player.track + 1) % MUSIC_TRACKS.length;
+      el.src = MUSIC_TRACKS[player.track].src;
+      if (player.playing) void el.play().catch(() => undefined);
+    });
+    music = player;
   }
+  const player = music;
+  if (player.playing) return;
+  player.playing = true;
+  player.el.volume = 0;
+  // play() can be refused before a user gesture; that is fine, we try again on the next sync.
+  void player.el
+    .play()
+    .then(() => {
+      if (player.playing) fadeMusic(player, () => Math.min(1, channelGain("music")), 800);
+    })
+    .catch(() => {
+      player.playing = false;
+    });
+}
+
+/** Pauses (never rewinds), so the tune carries on from the same place later. */
+function stopMusic(): void {
+  const player = music;
+  if (!player || !player.playing) return;
+  player.playing = false;
+  fadeMusic(player, () => 0, 250, () => {
+    if (!player.playing) player.el.pause();
+  });
 }
 
 /** Soft synthesized "wind" (filtered noise) plus a faint equipment hum. Artistic, not a Mars recording. */
@@ -232,7 +279,7 @@ function startAmbience(audio: AudioContext): void {
   const out = audio.createGain();
   out.gain.setValueAtTime(0, audio.currentTime);
   out.gain.linearRampToValueAtTime(1, audio.currentTime + 1.5);
-  out.connect(audio.destination);
+  out.connect(bus("ambience", audio));
 
   const seconds = 4;
   const buffer = audio.createBuffer(1, audio.sampleRate * seconds, audio.sampleRate);
@@ -314,8 +361,8 @@ function syncLayers(): void {
     const wantMusic = unlocked && visible && prefs.master && prefs.music;
     const wantAmbience = unlocked && visible && prefs.master && prefs.ambience;
     const audio = wantMusic || wantAmbience ? getContext() : ctx;
-    if (wantMusic && audio) startMusic(audio);
-    else stopMusic(audio);
+    if (wantMusic) startMusic();
+    else stopMusic();
     if (wantAmbience && audio) startAmbience(audio);
     else stopAmbience(audio);
   } catch {
@@ -325,7 +372,7 @@ function syncLayers(): void {
 
 /** Which loops are running right now (used by tests and the settings panel). */
 export function activeLayers(): { music: boolean; ambience: boolean } {
-  return { music: musicLayer !== null, ambience: ambienceLayer !== null };
+  return { music: music !== null && music.playing, ambience: ambienceLayer !== null };
 }
 
 /** Call from a real pointer/keyboard event. Until then nothing can play. */
@@ -355,7 +402,34 @@ export function setAudioPref(key: AudioPrefKey, on: boolean): void {
     // Preference simply will not persist; it still applies this session.
   }
   syncLayers();
+  applyVolumes();
   listeners.forEach((l) => l());
+}
+
+export function getAudioVolumes(): AudioVolumes {
+  loadPref();
+  return volumes;
+}
+
+/** Sets a channel volume (0–100). Takes effect immediately and is saved. */
+export function setAudioVolume(key: AudioPrefKey, value: number): void {
+  loadPref();
+  const v = Math.max(0, Math.min(100, Math.round(value)));
+  if (!Number.isFinite(v) || volumes[key] === v) return;
+  volumes = { ...volumes, [key]: v };
+  try {
+    window.localStorage.setItem(VOLUME_KEY, JSON.stringify(volumes));
+  } catch {
+    // Still applies for this session.
+  }
+  applyVolumes();
+  listeners.forEach((l) => l());
+}
+
+/** For tests and the browser check: what the music element is doing right now. */
+export function musicStatus(): { playing: boolean; track: string; time: number; volume: number } | null {
+  if (!music) return null;
+  return { playing: music.playing && !music.el.paused, track: MUSIC_TRACKS[music.track].title, time: music.el.currentTime, volume: music.el.volume };
 }
 
 export function isSoundEnabled(): boolean {
@@ -397,7 +471,7 @@ export function playSound(name: SoundName, delayMs = 0): boolean {
       amp.gain.setValueAtTime(cue.gain, start + n.t + Math.max(0.006, n.d - 0.02));
       amp.gain.linearRampToValueAtTime(0, start + n.t + n.d);
       osc.connect(amp);
-      amp.connect(audio.destination);
+      amp.connect(bus("sfx", audio));
       osc.start(start + n.t);
       osc.stop(start + n.t + n.d + 0.02);
     }
@@ -409,9 +483,16 @@ export function playSound(name: SoundName, delayMs = 0): boolean {
 
 /** Test helper: forget throttling, layers and context. */
 export function resetSoundForTests(): void {
-  stopMusic(null);
+  if (music) {
+    if (music.fadeTimer !== null) clearInterval(music.fadeTimer);
+    music.el.pause();
+    music = null;
+  }
   stopAmbience(null);
   ctx = null;
+  sfxBus = null;
+  ambienceBus = null;
+  volumes = DEFAULT_VOLUMES;
   unlocked = false;
   prefs = DEFAULT_PREFS;
   prefLoaded = false;
@@ -419,3 +500,4 @@ export function resetSoundForTests(): void {
 }
 
 export const SERVER_PREFS: AudioPrefs = DEFAULT_PREFS;
+export const SERVER_VOLUMES: AudioVolumes = DEFAULT_VOLUMES;
