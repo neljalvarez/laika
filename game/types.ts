@@ -184,6 +184,8 @@ export interface LastAction {
   kind: "upgrade" | "repair" | "mode" | "event";
   moduleId?: ModuleId;
   sol: number;
+  /** Materials actually spent on this build. */
+  cost?: number;
 }
 
 export interface TutorialState {
@@ -244,6 +246,8 @@ export interface MissionState {
   failureReason: string | null;
   /** Last rejected action, shown as a clear message. */
   notice: string | null;
+  /** Gears earned: one per successful upgrade (see game/gears.ts). */
+  gears: number;
   /** Today's suggested mission (optional to follow). */
   dailyMission: DailyMission;
   /** Sols whose daily mission was completed. */

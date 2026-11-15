@@ -3,7 +3,7 @@
 // Presentation only: shown after the engine has already applied an upgrade.
 // Closing or skipping it changes nothing in the game.
 import { MODULES } from "@/data/modules";
-import { CONFIG } from "@/game/config";
+import { perkAt } from "@/game/gears";
 import type { GreenhouseMode, ModuleId } from "@/game/types";
 import { Modal } from "./Modal";
 import { C, ModuleArt } from "./pixel/moduleArt";
@@ -28,12 +28,16 @@ interface Props {
   charge: number;
   generation: number;
   materialsLeft: number;
+  /** Materials actually spent (after any Gear discount). */
+  cost: number;
+  /** Total Gears after this upgrade. */
+  gears: number;
   onClose: () => void;
 }
 
-export function UpgradeReveal({ moduleId, level, condition, greenhouseMode, cropProgress, charge, generation, materialsLeft, onClose }: Props) {
+export function UpgradeReveal({ moduleId, level, condition, greenhouseMode, cropProgress, charge, generation, materialsLeft, cost, gears, onClose }: Props) {
+  const perk = perkAt(gears);
   const info = MODULES[moduleId];
-  const cost = CONFIG.upgradeCost[moduleId][level - 2];
   return (
     <Modal
       title={`${info.name} upgraded!`}
@@ -88,9 +92,20 @@ export function UpgradeReveal({ moduleId, level, condition, greenhouseMode, crop
               <th scope="row">Materials left</th>
               <td className="font-extrabold">{materialsLeft}</td>
             </tr>
+            <tr>
+              <th scope="row">Gears</th>
+              <td className="font-extrabold" data-testid="reveal-gears">
+                +1 (now {gears})
+              </td>
+            </tr>
           </tbody>
         </table>
         <p className="text-[13px]">{info.levelEffects[level - 1]}</p>
+        {perk && (
+          <p className="border-[3px] border-ink bg-gold p-2 text-[14px] font-bold" data-testid="reveal-perk">
+            Gear reward unlocked: {perk.name}! {perk.text}.
+          </p>
+        )}
       </div>
     </Modal>
   );

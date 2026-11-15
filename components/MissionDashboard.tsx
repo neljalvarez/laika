@@ -10,7 +10,9 @@ import { useEffect, useMemo, useRef, useState, type Dispatch } from "react";
 import { getLaikaLine } from "@/data/dialogue";
 import { getNextAction } from "@/data/guidance";
 import { missionText, missionWhy } from "@/game/missions";
+import { GEAR_PERKS } from "@/game/gears";
 import { INSIGHTS } from "@/game/insights";
+import { playSound } from "@/lib/sound";
 import { MODULES } from "@/data/modules";
 import { SCIENCE_CARDS } from "@/data/science";
 import { TUTORIAL_STAGES, TUTORIAL_TRADEOFF_LINE } from "@/data/tutorial";
@@ -77,6 +79,9 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   const [flash, setFlash] = useState<{ id: ModuleId; text: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [reveal, setReveal] = useState<{ id: ModuleId; level: number } | null>(null);
+  // After a build, Laika walks over to the building (presentation only).
+  const [visit, setVisit] = useState<{ id: ModuleId; key: number } | null>(null);
+  const [talking, setTalking] = useState(false);
   const [scienceFocus, setScienceFocus] = useState<string | undefined>(undefined);
   // A confirmed build waiting on the optional minigame. Dispatched exactly once.
   const [build, setBuild] = useState<{ kind: "upgrade" | "repair"; id: ModuleId } | null>(null);
@@ -102,6 +107,28 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   const gear = earnedGear(state.sol, state.status === "success" || state.status === "outstanding");
   const newGear = GEAR.find((g) => !g.finale && g.sol === state.sol);
   const lineUnread = laika.text !== seenLine;
+
+  // Laika "speaks": a short mouth animation and a few blips when a new line
+  // arrives, when her bubble is opened, and on each tutorial line.
+  const speak = () => {
+    setTalking(true);
+    playSound("talk");
+  };
+  useEffect(() => {
+    if (!talking) return;
+    const t = window.setTimeout(() => setTalking(false), 1500);
+    return () => window.clearTimeout(t);
+  }, [talking]);
+  const spokenRef = useRef<string | null>(null);
+  const tutStep = state.tutorial.active ? state.tutorial.step : -1;
+  const speechKey = `${tutStep}|${laika.text}`;
+  useEffect(() => {
+    const first = spokenRef.current === null;
+    if (spokenRef.current === speechKey) return;
+    spokenRef.current = speechKey;
+    if (first && tutStep < 0) return; // loading a mission is silent
+    speak();
+  }, [speechKey, tutStep]);
   const mission = state.dailyMission;
 
   // A finished daily mission gets a short celebration.
@@ -132,6 +159,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
       setReveal({ id: action.moduleId, level });
       return;
     }
+    setVisit((v) => ({ id: action.moduleId as ModuleId, key: (v?.key ?? 0) + 1 }));
     setFlash({ id: action.moduleId, text: "REPAIRED!" });
     setToast(`✓ ${entry.title}. ${entry.detail}`);
     const t1 = window.setTimeout(() => setFlash(null), 1800);
@@ -262,7 +290,13 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
           charge={state.resources.power / Math.max(1, batteryCapacity(state))}
           generation={solarGeneration(state)}
           materialsLeft={state.resources.materials}
-          onClose={() => setReveal(null)}
+          cost={state.lastAction?.cost ?? 0}
+          gears={state.gears}
+          onClose={() => {
+            const id = reveal.id;
+            setReveal(null);
+            setVisit((v) => ({ id, key: (v?.key ?? 0) + 1 }));
+          }}
         />
       );
     }
@@ -395,6 +429,26 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                   <div className="text-[9px] font-extrabold uppercase">{weather.label}</div>
                 </div>
               </div>
+              <Reveal
+                side="right"
+                bubbleWidth={230}
+                testId="gears-chip"
+                label={`Gears: ${state.gears}. Earn one for every upgrade.`}
+                trigger={
+                  <span className="flex w-full items-center justify-center gap-2 border-[3px] border-ink bg-navy px-2 py-1 text-cream" data-gears={state.gears}>
+                    <PixelSprite grid={ICONS.gear} scale={2} />
+                    <span className="text-[15px] font-extrabold tabular-nums">× {state.gears}</span>
+                  </span>
+                }
+              >
+                <span className="block text-[12px] font-extrabold uppercase">Gears: {state.gears}</span>
+                <span className="block text-[12px]">Every upgrade earns 1 Gear. Gears unlock small bonuses:</span>
+                {GEAR_PERKS.map((p) => (
+                  <span key={p.id} className="mt-1 block text-[12px] font-bold">
+                    {state.gears >= p.at ? "✓" : "○"} {p.at} Gears: {p.name} ({p.text})
+                  </span>
+                ))}
+              </Reveal>
               <div id="hud-meters" className="flex min-w-0 flex-1" aria-label="Resource meters">
                 <ResourceHud state={state} />
               </div>
@@ -417,6 +471,8 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               highlight={null}
               gear={gear}
               fill={wide}
+              visit={visit}
+              talking={talking}
             />
           </div>
           </div>
@@ -429,10 +485,13 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               bubbleWidth={260}
               testId="laika-talk"
               label={`Laika says: ${laika.text}`}
-              onReveal={() => setSeenLine(laika.text)}
+              onReveal={() => {
+                if (seenLine !== laika.text) speak();
+                setSeenLine(laika.text);
+              }}
               trigger={
                 <span className="relative block border-[3px] border-ink bg-slate p-1">
-                  <LaikaSprite mood={laika.mood} scale={2} motion={flash ? "laika-hop-brief" : undefined} gear={gear} />
+                  <LaikaSprite mood={laika.mood} scale={2} motion={flash ? "laika-hop-brief" : undefined} gear={gear} talking={talking} />
                   <span className="bubble-badge" aria-hidden="true" style={lineUnread ? undefined : { background: "#b9c2d6" }}>
                     {lineUnread ? "!" : "…"}
                   </span>
@@ -656,7 +715,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
           </div>
           <div className="flex items-start gap-3 p-2">
             <div className="border-[3px] border-ink bg-slate p-1">
-              <LaikaSprite mood={tut === 5 ? "happy" : "idle"} scale={2} />
+              <LaikaSprite mood={tut === 5 ? "happy" : "idle"} scale={2} talking={talking} />
             </div>
             <div className="min-w-0 flex-1" aria-live="polite">
               {stage.lines.map((line) => (
@@ -732,7 +791,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               <span className="mt-3 flex items-center justify-center gap-3 border-[3px] border-gold p-2" data-testid="gear-unlock">
                 <LaikaSprite mood="celebrate" scale={3} gear={gear} />
                 <span className="text-left">
-                  <span className="block text-[11px] font-extrabold uppercase tracking-widest">New gear for Laika!</span>
+                  <span className="block text-[11px] font-extrabold uppercase tracking-widest">New outfit piece for Laika!</span>
                   <span className="block text-[18px] font-extrabold text-gold">{newGear.name}</span>
                 </span>
               </span>

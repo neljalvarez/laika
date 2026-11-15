@@ -14,7 +14,12 @@ export type SoundName =
   | "sol"
   | "event"
   | "success"
-  | "failure";
+  | "failure"
+  | "talk"
+  | "woof"
+  | "gear"
+  | "boom"
+  | "whoosh";
 
 interface Note {
   /** Frequency in Hz. */
@@ -46,6 +51,12 @@ export const CUES: Record<SoundName, Cue> = {
   sol: { wave: "triangle", gain: 0.1, gap: 500, notes: seq([392, 523, 659], 0.09, 0.12) },
   event: { wave: "square", gain: 0.05, gap: 800, notes: [{ f: 740, t: 0, d: 0.09 }, { f: 740, t: 0.14, d: 0.09 }, { f: 587, t: 0.28, d: 0.16 }] },
   success: { wave: "square", gain: 0.05, gap: 2000, notes: [...seq([523, 659, 784, 1047], 0.11, 0.1), { f: 784, t: 0.5, d: 0.1 }, { f: 1047, t: 0.62, d: 0.3 }] },
+  // Laika "speaking": a few quick, cute blips (not a voice).
+  talk: { wave: "square", gain: 0.03, gap: 500, notes: [{ f: 620, t: 0, d: 0.045 }, { f: 740, t: 0.07, d: 0.045 }, { f: 560, t: 0.14, d: 0.045 }, { f: 700, t: 0.21, d: 0.06 }] },
+  woof: { wave: "triangle", gain: 0.1, gap: 500, notes: [{ f: 392, t: 0, d: 0.07 }, { f: 262, t: 0.06, d: 0.1 }] },
+  gear: { wave: "square", gain: 0.04, gap: 500, notes: seq([784, 988, 1175, 1568], 0.07, 0.08) },
+  boom: { wave: "triangle", gain: 0.1, gap: 500, notes: [{ f: 110, t: 0, d: 0.18 }, { f: 73, t: 0.12, d: 0.3 }] },
+  whoosh: { wave: "triangle", gain: 0.06, gap: 400, notes: seq([196, 262, 330, 440, 587], 0.06, 0.09) },
   failure: { wave: "triangle", gain: 0.1, gap: 2000, notes: [...seq([392, 330, 262], 0.16, 0.15), { f: 196, t: 0.48, d: 0.35 }] },
 };
 

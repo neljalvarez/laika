@@ -71,6 +71,7 @@ export function migrateSave(state: MissionState): MissionState {
     difficulty === state.difficulty &&
     deliveries === state.deliveries &&
     state.dailyMission !== undefined &&
+    typeof state.gears === "number" &&
     Array.isArray(state.missionsDone) &&
     Array.isArray(state.insights) &&
     Array.isArray(state.insightQueue);
@@ -80,6 +81,8 @@ export function migrateSave(state: MissionState): MissionState {
     tutorial,
     difficulty,
     deliveries,
+    // Older saves: count past upgrades as Gears (no retroactive materials).
+    gears: typeof state.gears === "number" ? state.gears : (state.metrics?.upgradesBuilt ?? 0),
     missionsDone: Array.isArray(state.missionsDone) ? state.missionsDone : [],
     insights: Array.isArray(state.insights) ? state.insights : [],
     insightQueue: Array.isArray(state.insightQueue) ? state.insightQueue : [],

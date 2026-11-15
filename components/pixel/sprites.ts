@@ -161,6 +161,19 @@ export const LAIKA_FRAMES: Record<LaikaVariant, [Grid, Grid]> = {
   ],
 };
 
+// Talking: the mouth opens and closes (applied on top of any mood frame).
+const MOUTH_OPEN: Patch[] = [
+  [10, 10, "NPPN"],
+  [11, 11, "PP"],
+];
+const MOUTH_CLOSED: Patch[] = [
+  [10, 10, "WWWW"],
+  [11, 11, "WW"],
+];
+export function talkFrames(frame: Grid): [Grid, Grid] {
+  return [patchGrid(frame, MOUTH_OPEN), patchGrid(frame, MOUTH_CLOSED)];
+}
+
 // Walk cycle: alternating lifted paws (used only while Laika changes position).
 const WALK_LEFT: Patch[] = [
   [21, 5, "RRRRR"],
@@ -207,7 +220,20 @@ export function withGear(grid: Grid, gear: GearItem[]): Grid {
   return gear.length === 0 ? grid : patchGrid(grid, gear.flatMap((g) => g.patches));
 }
 
-export type IconName = "power" | "lifeSupport" | "materials" | "food" | "radiation" | "warning" | "sun" | "dust";
+export type IconName =
+  | "power"
+  | "lifeSupport"
+  | "materials"
+  | "food"
+  | "radiation"
+  | "warning"
+  | "sun"
+  | "dust"
+  | "gear"
+  | "paw"
+  | "book"
+  | "flask"
+  | "star";
 
 export const ICONS: Record<IconName, Grid> = {
   power: [
@@ -286,6 +312,61 @@ export const ICONS: Record<IconName, Grid> = {
     "..EEEEE..",
     ".E..E..E.",
     "....E....",
+  ],
+  paw: [
+    "..WW.WW..",
+    "..WW.WW..",
+    "WW.....WW",
+    "WW.WWW.WW",
+    "..WWWWW..",
+    ".WWWWWWW.",
+    ".WWWWWWW.",
+    "..WW.WW..",
+    ".........",
+  ],
+  book: [
+    ".........",
+    "WWWW.WWWW",
+    "WDDW.WDDW",
+    "WWWW.WWWW",
+    "WDDW.WDDW",
+    "WWWW.WWWW",
+    "WDDW.WDDW",
+    "WWWWWWWWW",
+    ".........",
+  ],
+  flask: [
+    "...WWW...",
+    "....W....",
+    "....W....",
+    "...WRW...",
+    "...WRW...",
+    "..WRRRW..",
+    ".WRRRRRW.",
+    ".WWWWWWW.",
+    ".........",
+  ],
+  star: [
+    "....E....",
+    "....E....",
+    "...EEE...",
+    "EEEEEEEEE",
+    ".EEEEEEE.",
+    "..EEEEE..",
+    "..EE.EE..",
+    ".EE...EE.",
+    ".........",
+  ],
+  gear: [
+    "...E.E...",
+    ".E.EEE.E.",
+    "..EEEEE..",
+    "EEE...EEE",
+    ".EE...EE.",
+    "EEE...EEE",
+    "..EEEEE..",
+    ".E.EEE.E.",
+    "...E.E...",
   ],
   dust: [
     ".........",

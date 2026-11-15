@@ -36,8 +36,9 @@ const PANELS: { title: string; mood: LaikaMood; text: string[]; bullets?: string
   },
 ];
 
-export function StoryIntro({ onDone }: { onDone: () => void }) {
-  const [i, setI] = useState(0);
+/** briefOnly: the cutscene already told the story, so show just the "Your mission" panel. */
+export function StoryIntro({ onDone, briefOnly = false }: { onDone: () => void; briefOnly?: boolean }) {
+  const [i, setI] = useState(briefOnly ? PANELS.length - 1 : 0);
   const panel = PANELS[i];
   const last = i === PANELS.length - 1;
   return (
@@ -45,9 +46,11 @@ export function StoryIntro({ onDone }: { onDone: () => void }) {
       <section className="panel" aria-live="polite">
         <div className="panel-title">
           <span>{panel.title}</span>
-          <span>
-            {i + 1}/{PANELS.length}
-          </span>
+          {!briefOnly && (
+            <span>
+              {i + 1}/{PANELS.length}
+            </span>
+          )}
         </div>
         <div className="flex flex-col items-center gap-4 p-4 sm:flex-row sm:items-start">
           <div className="border-[3px] border-ink bg-slate p-2">
@@ -67,11 +70,15 @@ export function StoryIntro({ onDone }: { onDone: () => void }) {
           </div>
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t-[3px] border-ink p-3">
-          <button type="button" className="btn btn-gray" onClick={onDone}>
-            Skip story
-          </button>
+          {briefOnly ? (
+            <span />
+          ) : (
+            <button type="button" className="btn btn-gray" onClick={onDone}>
+              Skip story
+            </button>
+          )}
           <div className="flex gap-2">
-            {i > 0 && (
+            {i > 0 && !briefOnly && (
               <button type="button" className="btn btn-gray" onClick={() => setI(i - 1)}>
                 Back
               </button>

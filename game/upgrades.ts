@@ -1,7 +1,8 @@
 // Engineering actions: upgrades and repairs. One action per sol.
 import { MODULES } from "@/data/modules";
 import { CONFIG, clamp } from "./config";
-import type { MissionState, ModuleId } from "./types";
+import { GEAR_RULES, perkAt, repairBonus, upgradeDiscount } from "./gears";
+import type { LogEntry, MissionState, ModuleId } from "./types";
 
 export interface ActionCheck {
   ok: boolean;
@@ -12,7 +13,7 @@ export interface ActionCheck {
 export function upgradeCost(state: MissionState, id: ModuleId): number | null {
   const level = state.modules[id].level;
   if (level >= 3) return null;
-  return CONFIG.upgradeCost[id][level - 1];
+  return Math.max(1, CONFIG.upgradeCost[id][level - 1] - upgradeDiscount(state));
 }
 
 function commonBlock(state: MissionState): string | null {
@@ -49,10 +50,34 @@ export function applyUpgrade(state: MissionState, id: ModuleId, bonus = false): 
   const level = (state.modules[id].level + 1) as 2 | 3;
   const before = state.modules[id].condition;
   const condition = bonus ? clamp(before + CONFIG.minigameBonus, 0, 100) : before;
+  // Every successful upgrade earns one Gear. Milestones are checked once, here.
+  const gears = state.gears + 1;
+  const perk = perkAt(gears);
+  const parts = perk?.id === "parts" ? GEAR_RULES.partsBonus : 0;
+  const log: LogEntry[] = [
+    ...state.log,
+    {
+      sol: state.sol,
+      kind: "engineering",
+      title: `Upgraded ${MODULES[id].name} to Level ${level}`,
+      detail: `Materials −${check.cost}. ${MODULES[id].levelEffects[level - 1]}${
+        bonus && condition > before ? ` Hands-on bonus: condition ${before} → ${condition}.` : ""
+      } Gear earned (${gears}).`,
+    },
+  ];
+  if (perk) {
+    log.push({
+      sol: state.sol,
+      kind: "system",
+      title: `Gear reward: ${perk.name}`,
+      detail: `${gears} Gears collected. ${perk.text}.${parts ? ` Materials +${parts}.` : ""}`,
+    });
+  }
   return {
     ...state,
-    resources: { ...state.resources, materials: state.resources.materials - check.cost },
+    resources: { ...state.resources, materials: state.resources.materials - check.cost + parts },
     modules: { ...state.modules, [id]: { level, condition } },
+    gears,
     actionsLeft: state.actionsLeft - 1,
     notice: null,
     metrics: {
@@ -60,26 +85,21 @@ export function applyUpgrade(state: MissionState, id: ModuleId, bonus = false): 
       materialsSpent: state.metrics.materialsSpent + check.cost,
       upgradesBuilt: state.metrics.upgradesBuilt + 1,
     },
-    lastAction: { kind: "upgrade", moduleId: id, sol: state.sol },
-    log: [
-      ...state.log,
-      {
-        sol: state.sol,
-        kind: "engineering",
-        title: `Upgraded ${MODULES[id].name} to Level ${level}`,
-        detail: `Materials −${check.cost}. ${MODULES[id].levelEffects[level - 1]}${
-          bonus && condition > before ? ` Hands-on bonus: condition ${before} → ${condition}.` : ""
-        }`,
-      },
-    ],
+    lastAction: { kind: "upgrade", moduleId: id, sol: state.sol, cost: check.cost },
+    log,
   };
+}
+
+/** Condition a repair restores right now (base + Gear perk). */
+export function repairAmountFor(state: MissionState): number {
+  return CONFIG.repairAmount + repairBonus(state);
 }
 
 export function applyRepair(state: MissionState, id: ModuleId, bonus = false): MissionState {
   const check = canRepair(state, id);
   if (!check.ok) return { ...state, notice: check.reason };
   const before = state.modules[id].condition;
-  const condition = clamp(before + CONFIG.repairAmount + (bonus ? CONFIG.minigameBonus : 0), 0, 100);
+  const condition = clamp(before + repairAmountFor(state) + (bonus ? CONFIG.minigameBonus : 0), 0, 100);
   return {
     ...state,
     resources: { ...state.resources, materials: state.resources.materials - check.cost },
@@ -91,7 +111,7 @@ export function applyRepair(state: MissionState, id: ModuleId, bonus = false): M
       materialsSpent: state.metrics.materialsSpent + check.cost,
       repairsDone: state.metrics.repairsDone + 1,
     },
-    lastAction: { kind: "repair", moduleId: id, sol: state.sol },
+    lastAction: { kind: "repair", moduleId: id, sol: state.sol, cost: check.cost },
     log: [
       ...state.log,
       {

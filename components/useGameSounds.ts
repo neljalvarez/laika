@@ -98,6 +98,7 @@ export function useGameSounds(mission: MissionState | null): void {
     // A daily mission finished, or a new piece of gear unlocked: small reward jingle.
     if (mission.missionsDone.length > before.missionsDone.length) playSound("upgrade", 150);
     else if (mission.sol > before.sol && [2, 4, 6, 8].includes(mission.sol)) playSound("upgrade", 900);
+    if (mission.gears > before.gears) playSound("gear", 700);
     if (mission.insightQueue.length > before.insightQueue.length && !mission.pendingEvent) playSound("tutorial", 600);
 
     const eventVisible = mission.pendingEvent !== null && !mission.reportPending;

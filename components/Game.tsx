@@ -10,6 +10,7 @@ import { clearMission, loadMission, saveMission } from "@/game/persistence";
 import { rootReducer } from "@/game/reducer";
 import { randomSeed } from "@/game/rng";
 import { Credits, HowToPlay } from "./HowToPlay";
+import { IntroCutscene, OutroCutscene } from "./Cutscene";
 import { DifficultySelect } from "./DifficultySelect";
 import { MainMenu } from "./MainMenu";
 import { MissionDashboard } from "./MissionDashboard";
@@ -19,7 +20,7 @@ import { SettingsModal } from "./SettingsModal";
 import { StoryIntro } from "./StoryIntro";
 import { useGameSounds, useUiSounds } from "./useGameSounds";
 
-type MenuOverlay = null | "howto" | "science" | "credits" | "settings" | "start-guided" | "start-random";
+type MenuOverlay = null | "howto" | "science" | "credits" | "settings" | "start-guided" | "start-random" | "intro-replay";
 
 export function Game() {
   const [mission, dispatch] = useReducer(rootReducer, null);
@@ -27,6 +28,10 @@ export function Game() {
   const [savedSol, setSavedSol] = useState<number | null>(null);
   const [hasSave, setHasSave] = useState(false);
   const [saveOk, setSaveOk] = useState<boolean | null>(null);
+
+  // Cutscene flags are UI state only. Continue never replays a cutscene.
+  const [introDone, setIntroDone] = useState(true);
+  const [outroDone, setOutroDone] = useState(true);
 
   useUiSounds();
   useGameSounds(mission);
@@ -54,12 +59,18 @@ export function Game() {
     setOverlay(null);
     // The guided mission uses a fixed seed so every new player sees the same first sols.
     const seed = fixedSeed ? TUTORIAL_SEED : randomSeed();
+    setIntroDone(false); // a brand-new mission starts with the intro story
+    setOutroDone(false);
     dispatch({ type: "NEW_MISSION", state: createInitialState(seed, training, difficulty) });
   }, []);
 
   const continueMission = () => {
     const saved = loadMission();
-    if (saved) dispatch({ type: "LOAD", state: saved });
+    if (saved) {
+      setIntroDone(true);
+      setOutroDone(true);
+      dispatch({ type: "LOAD", state: saved });
+    }
     else {
       setHasSave(false);
       setSavedSol(null);
@@ -77,20 +88,29 @@ export function Game() {
   const playAgain = () => {
     clearMission();
     // Same difficulty as the mission just finished, new random seed.
+    setIntroDone(true);
+    setOutroDone(false);
     const state = createInitialState(randomSeed(), false, normalizeDifficulty(mission?.difficulty));
     dispatch({ type: "NEW_MISSION", state: { ...state, status: "playing" } });
   };
 
   if (mission) {
-    if (mission.status === "intro") return <StoryIntro onDone={() => dispatch({ type: "BEGIN_MISSION" })} />;
+    if (mission.status === "intro") {
+      if (!introDone) return <IntroCutscene onDone={() => setIntroDone(true)} />;
+      return <StoryIntro briefOnly onDone={() => dispatch({ type: "BEGIN_MISSION" })} />;
+    }
     const finished = mission.status !== "playing";
     if (finished && !mission.reportPending) {
+      // Win only: a short return-home story, then the full report (always shown).
+      const won = mission.status === "success" || mission.status === "outstanding";
+      if (won && !outroDone) return <OutroCutscene state={mission} onDone={() => setOutroDone(true)} />;
       return <MissionDebrief state={mission} onPlayAgain={playAgain} onMenu={restart} />;
     }
     return <MissionDashboard key={mission.seed} state={mission} dispatch={dispatch} saveOk={saveOk} onRestart={restart} />;
   }
 
   const starting = overlay === "start-guided" || overlay === "start-random";
+  if (overlay === "intro-replay") return <IntroCutscene onDone={() => setOverlay(null)} />;
   return (
     <>
       <MainMenu
@@ -103,6 +123,7 @@ export function Game() {
         onScience={() => setOverlay("science")}
         onCredits={() => setOverlay("credits")}
         onSettings={() => setOverlay("settings")}
+        onWatchIntro={() => setOverlay("intro-replay")}
       />
       {overlay === "howto" && <HowToPlay onClose={() => setOverlay(null)} />}
       {overlay === "science" && <ScienceLab onClose={() => setOverlay(null)} />}

@@ -96,6 +96,15 @@ export function computeScore(state: MissionState): ScoreBreakdown {
   return { total, categories, progress };
 }
 
+/** Letter grade for the total score (presentation only). */
+export function gradeFor(total: number): string {
+  if (total >= 90) return "A+";
+  if (total >= 80) return "A";
+  if (total >= 70) return "B";
+  if (total >= 60) return "C";
+  return "D";
+}
+
 export const ENDING_RULES = {
   outstanding: { score: 80, minCondition: 55, lifeSupport: 50, radiationBelow: 50 },
   success: { score: 60, lifeSupport: 30, radiationBelow: 80 },

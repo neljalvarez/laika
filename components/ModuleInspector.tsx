@@ -13,7 +13,7 @@ import {
   shelterMultiplier,
   solarGeneration,
 } from "@/game/engine";
-import { canRepair, canUpgrade } from "@/game/upgrades";
+import { canRepair, canUpgrade, repairAmountFor } from "@/game/upgrades";
 import { MODULE_IDS, type GameAction, type GreenhouseMode, type MissionState, type ModuleId } from "@/game/types";
 
 export function conditionTag(c: number): { word: string; cls: string } {
@@ -229,7 +229,7 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
   const up = canUpgrade(state, moduleId);
   const rep = canRepair(state, moduleId);
   const pending = confirm && confirm.id === moduleId ? confirm.kind : null;
-  const afterRepair = Math.min(100, Math.round(m.condition) + CONFIG.repairAmount);
+  const afterRepair = Math.min(100, Math.round(m.condition) + repairAmountFor(state));
 
   const act = (kind: "upgrade" | "repair") => {
     onStart(kind, moduleId);

@@ -10,6 +10,7 @@ import { LaikaFrames } from "./LaikaSprite";
 import { C, ModuleArt, dome, px, type Px } from "./pixel/moduleArt";
 import { gridRects } from "./pixel/PixelSprite";
 import { ICONS, type GearItem } from "./pixel/sprites";
+import { playSound } from "@/lib/sound";
 
 export const SCENE_W = 320;
 export const SCENE_H = 180;
@@ -235,7 +236,21 @@ interface OutpostProps {
   /** Brief celebratory bounce after a successful engineering action. */
   laikaBurst?: boolean;
   gear?: GearItem[];
+  /** After a build, Laika walks to this building, cheers, and walks back. Change `key` to trigger. */
+  visit?: { id: ModuleId; key: number } | null;
+  /** Mouth animation while Laika is speaking. */
+  talking?: boolean;
 }
+
+/** Safe standing spots next to each building (top-left of Laika's 26×26 sprite). */
+const VISIT_SPOTS: Record<ModuleId, { x: number; y: number }> = {
+  solar: { x: 50, y: 108 },
+  habitat: { x: 152, y: 108 },
+  greenhouse: { x: 254, y: 108 },
+  battery: { x: 100, y: 146 },
+  lifeSupport: { x: 138, y: 146 },
+  shelter: { x: 240, y: 146 },
+};
 
 export function PixelMarsOutpost({
   modules,
@@ -254,6 +269,8 @@ export function PixelMarsOutpost({
   laikaBurst = false,
   gear = [],
   fill = false,
+  visit = null,
+  talking = false,
 }: OutpostProps) {
   // How many scene units tall the view is. 140 = the original framing.
   const svgRef = useRef<SVGSVGElement>(null);
@@ -274,7 +291,30 @@ export function PixelMarsOutpost({
   }, [fill]);
   const top = fill ? SCENE_H - units : VIEW_TOP;
   const [hot, setHot] = useState<ModuleId | null>(null);
-  const laikaPos = sheltering ? { x: 240, y: 146 } : { x: 124, y: 148 };
+  const homePos = sheltering ? { x: 240, y: 146 } : { x: 124, y: 148 };
+  // Presentation only: go → cheer → back. The upgrade itself is already done.
+  const [trip, setTrip] = useState<{ id: ModuleId; phase: "go" | "cheer" | "back" } | null>(null);
+  const visitKey = visit?.key ?? 0;
+  useEffect(() => {
+    if (!visit) return;
+    const id = visit.id;
+    setTrip({ id, phase: "go" });
+    const t1 = window.setTimeout(() => {
+      setTrip({ id, phase: "cheer" });
+      playSound("woof");
+    }, 1700);
+    const t2 = window.setTimeout(() => setTrip({ id, phase: "back" }), 3200);
+    const t3 = window.setTimeout(() => setTrip(null), 4900);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+    // Only a new visit key starts a trip.
+  }, [visitKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const laikaPos = trip && trip.phase !== "back" ? VISIT_SPOTS[trip.id] : homePos;
+  const tripWalking = trip !== null && trip.phase !== "cheer";
+  const cheering = trip?.phase === "cheer";
 
   // Walk cycle only while Laika is actually changing position (purely visual).
   const [walking, setWalking] = useState(false);
@@ -405,8 +445,11 @@ export function PixelMarsOutpost({
 
       <g className="laika-walker" style={{ transform: `translate(${laikaPos.x}px, ${laikaPos.y}px)` }}>
         <rect x={5} y={25} width={16} height={2} fill={C.rock} fillOpacity={0.45} />
-        <g className={mood === "celebrate" ? "laika-hop" : laikaBurst ? "laika-hop-brief" : walking ? undefined : "laika-bob"}>
-          <LaikaFrames mood={mood} walking={walking} gear={gear} />
+        <g
+          className={mood === "celebrate" ? "laika-hop" : laikaBurst || cheering ? "laika-hop-brief" : walking || tripWalking ? undefined : "laika-bob"}
+          data-laika-trip={trip ? `${trip.id}:${trip.phase}` : "home"}
+        >
+          <LaikaFrames mood={trip ? "happy" : mood} walking={walking || tripWalking} gear={gear} talking={talking && !trip} />
         </g>
       </g>
 

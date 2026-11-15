@@ -3,7 +3,7 @@
 import { getLaikaLine } from "@/data/dialogue";
 import { MODULES } from "@/data/modules";
 import { bestDecision, engineeringLesson, whatToImprove } from "@/game/debrief";
-import { computeScore, ENDING_RULES, ENDING_TEXT } from "@/game/scoring";
+import { computeScore, ENDING_RULES, ENDING_TEXT, gradeFor } from "@/game/scoring";
 import { difficultyOf } from "@/game/difficulty";
 import { MODULE_IDS, type MissionState } from "@/game/types";
 import { LaikaSprite } from "./LaikaSprite";
@@ -60,6 +60,9 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
               {score.total}
             </div>
             <div className="text-[14px] font-extrabold">out of 100</div>
+            <div className="text-[18px] font-extrabold text-gold" data-testid="debrief-grade">
+              Grade {gradeFor(score.total)}
+            </div>
             <div className="mt-1 text-[11px] font-extrabold uppercase" data-testid="debrief-difficulty">
               {difficultyOf(state).label} mode
             </div>
@@ -135,11 +138,11 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
             </div>
             <p className="text-[13px]">
               <strong>Daily missions:</strong> {state.missionsDone.length} of {missionsOffered} completed ·{" "}
-              <strong>Insights found:</strong> {state.insights.length}
+              <strong>Insights found:</strong> {state.insights.length} · <strong>Gears:</strong> {state.gears}
             </p>
             {gear.length > 0 && (
               <p className="text-[13px]" data-testid="debrief-gear">
-                <strong>Laika&apos;s gear:</strong> {gear.map((g) => g.name).join(", ")}
+                <strong>Laika&apos;s outfit:</strong> {gear.map((g) => g.name).join(", ")}
               </p>
             )}
           </div>
