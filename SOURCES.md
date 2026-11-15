@@ -62,7 +62,7 @@ filtered noise, not a recording from Mars.
 
 ### Artwork
 
-All pixel art (outpost, buildings, Laika, rockets, cutscenes, icons, tab icon `app/icon.svg`) is original and drawn in
+All pixel art (outpost, buildings, Laika, rockets, cutscenes, icons, and the tab icon `app/icon.svg`) is original and drawn in
 code as SVG rectangles for this project. Art direction followed a style reference sheet supplied by the team; that
 sheet is not included in the game. A title-screen reference image supplied by the team guided the menu layout.
 
