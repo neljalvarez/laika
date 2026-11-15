@@ -263,7 +263,7 @@ Re-checked on 2026-11-15. Full details, where each is used and what is real vers
 
 - **Team:** repository owner `neljalvarez`. *Team members and roles: to be filled in by the team.*
 - **Art:** original pixel art drawn in code for this project (see SOURCES.md).
-- **Music:** "Against the Crimson Sky" (main menu), "Below the Red Horizon" and "Last Light On The Ridge" (gameplay), custom-made for this project.
+- **Music:** "Against the Crimson Sky" (main menu), "Below the Red Horizon" and "Last Light On The Ridge" (gameplay), "Across the Crimson Sands" (successful ending), custom-made for this project.
 - **Sound effects:** synthesized in the browser.
 - **Memorial photograph:** historical photograph of Laika (1957), supplied by the team (see SOURCES.md).
 - **Development:** built with Claude (Anthropic) through Claude Code under the team's direction.
@@ -356,3 +356,11 @@ The project is a standard Next.js app with no backend or environment variables. 
 - **Music routing:** "Against the Crimson Sky" only on the main menu (fades out in ~0.4 s when leaving); everywhere
   else "Below the Red Horizon" then "Last Light On The Ridge". One audio element; each screen resumes where it left off.
 - **Overview tab** uses larger text and fills the panel height (no empty space).
+
+### Ending music
+
+"Across the Crimson Sands" is the successful ending's own track (`MusicScene` "ending" in `lib/sound.ts`). It fades in
+over 2.5 s when the ending starts, plays unbroken from the rocket landing to the Golden Treat Award, fades out over
+3.5 s while Laika sleeps at home, and is fully stopped before the memorial (which keeps only the typewriter ticks).
+Skip Outro fades it out within about 0.4 s. It respects the Music and Master settings and never plays on the menu,
+in the intro, in gameplay or after an unsuccessful mission.

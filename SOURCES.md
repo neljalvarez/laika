@@ -56,7 +56,11 @@ not a physical measurement.
 | "Last Light On The Ridge" | `public/audio/last-light-on-the-ridge.mp3` | Custom-made for this project; confirmed by the team on 2026-11-15. |
 | "Below the Red Horizon" | `public/audio/below-the-red-horizon.mp3` | Supplied by the team on 2026-11-15 to replace "Against the Crimson Sky" during gameplay; treated as custom-made like the other tracks (**the team should confirm**). |
 
-"Against the Crimson Sky" plays only on the main menu. Gameplay, the intro and the endings use "Below the Red
+| "Across the Crimson Sands" | `public/audio/across-the-crimson-sands.mp3` | Supplied by the team on 2026-11-15 for the successful ending only; treated as custom-made like the other tracks (**the team should confirm**). |
+
+"Against the Crimson Sky" plays only on the main menu. "Across the Crimson Sands" plays only during the successful
+ending: it fades in over 2.5 s as the ending starts and fades out over 3.5 s while Laika sleeps at home, so it has
+stopped before the memorial. Gameplay, the intro and the endings use "Below the Red
 Horizon" followed by "Last Light On The Ridge". The failure scene and the memorial have no music.
 
 ### Sound effects and ambience

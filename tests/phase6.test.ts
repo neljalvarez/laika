@@ -92,7 +92,8 @@ describe("audio channels", () => {
     expect(channelGain("sfx", p, vol)).toBeGreaterThan(0);
   });
   it("ships the supplied music files", () => {
-    expect(MUSIC_TRACKS).toHaveLength(3);
+    expect(MUSIC_TRACKS).toHaveLength(4);
+    expect(MUSIC_TRACKS.filter((t) => t.scene === "ending").map((t) => t.title)).toEqual(["Across the Crimson Sands"]);
     // The main-menu theme is never in the gameplay playlist.
     expect(MUSIC_TRACKS.filter((t) => t.scene === "menu").map((t) => t.title)).toEqual(["Against the Crimson Sky"]);
     expect(MUSIC_TRACKS.filter((t) => t.scene === "game").map((t) => t.title)).toEqual(["Below the Red Horizon", "Last Light On The Ridge"]);
