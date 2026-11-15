@@ -72,7 +72,7 @@ export function UpgradeReveal({ moduleId, level, condition, greenhouseMode, crop
             ))}
           </svg>
         </div>
-        <div className="h-pixel text-[20px]">
+        <div className="h-pixel text-[length:calc(20px*var(--ts))]">
           Level {level - 1} <span aria-hidden="true">→</span>
           <span className="sr-only"> to </span> Level {level}
         </div>
@@ -100,9 +100,9 @@ export function UpgradeReveal({ moduleId, level, condition, greenhouseMode, crop
             </tr>
           </tbody>
         </table>
-        <p className="text-[13px]">{info.levelEffects[level - 1]}</p>
+        <p className="text-[length:calc(13px*var(--ts))]">{info.levelEffects[level - 1]}</p>
         {perk && (
-          <p className="border-[3px] border-ink bg-gold p-2 text-[14px] font-bold" data-testid="reveal-perk">
+          <p className="border-[3px] border-ink bg-gold p-2 text-[length:calc(14px*var(--ts))] font-bold" data-testid="reveal-perk">
             Gear reward unlocked: {perk.name}! {perk.text}.
           </p>
         )}

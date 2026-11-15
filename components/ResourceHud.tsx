@@ -51,18 +51,18 @@ function Meter({ id, icon, label, value, max, color, status, hint, delta, goodWh
         </span>
       }
     >
-      <span className="block text-[12px] font-extrabold uppercase">{label}</span>
-      <span className="block text-[20px] font-extrabold tabular-nums" data-testid={`meter-value-${id}`}>
+      <span className="block text-[length:calc(12px*var(--ts))] font-extrabold uppercase">{label}</span>
+      <span className="block text-[length:calc(20px*var(--ts))] font-extrabold tabular-nums" data-testid={`meter-value-${id}`}>
         {value}
-        <span className="text-[12px]"> / {max}</span>
+        <span className="text-[length:calc(12px*var(--ts))]"> / {max}</span>
       </span>
       <span className={`tag ${status.level === "ok" ? "tag-ok" : status.level === "warn" ? "tag-warn" : "tag-bad"}`}>{status.word}</span>
       {deltaText && (
-        <span className="mt-1 block text-[12px] font-bold" style={{ color: delta === 0 ? "#66708c" : deltaGood ? "#2f7d45" : "#a94f36" }}>
+        <span className="mt-1 block text-[length:calc(12px*var(--ts))] font-bold" style={{ color: delta === 0 ? "#66708c" : deltaGood ? "#2f7d45" : "#a94f36" }}>
           {deltaText}
         </span>
       )}
-      <span className="mt-1 block text-[11px]">{hint}</span>
+      <span className="mt-1 block text-[length:calc(11px*var(--ts))]">{hint}</span>
     </Reveal>
   );
 }
@@ -91,14 +91,14 @@ export function ResourceHud({ state }: { state: MissionState }) {
   );
 }
 
-export function WeatherBadge({ label, weather }: { label: string; weather: Weather }) {
+export function WeatherBadge({ label, weather, big = false }: { label: string; weather: Weather; big?: boolean }) {
   const w = WEATHER_TEXT[weather];
   return (
     <div className="flex items-center gap-2 border-[3px] border-ink bg-cream px-2 py-1">
-      <PixelSprite grid={ICONS[w.icon]} scale={2} />
+      <PixelSprite grid={ICONS[w.icon]} scale={big ? 3 : 2} />
       <div className="leading-tight">
-        <div className="text-[10px] font-extrabold uppercase tracking-wide text-maroon">{label}</div>
-        <div className="text-[13px] font-extrabold uppercase">
+        <div className={`${big ? "text-[length:calc(12px*var(--ts))]" : "text-[length:calc(10px*var(--ts))]"} font-extrabold uppercase tracking-wide text-maroon`}>{label}</div>
+        <div className={`${big ? "text-[length:calc(16px*var(--ts))]" : "text-[length:calc(13px*var(--ts))]"} font-extrabold uppercase`}>
           {w.label} <span className="font-bold normal-case opacity-80">({w.note})</span>
         </div>
       </div>

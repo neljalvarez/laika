@@ -14,7 +14,8 @@ interface Box {
 
 const PAD = 6;
 const GAP = 16;
-const DIM = "rgba(20, 28, 50, 0.64)";
+const TUTORIAL_DIM = "rgba(20, 28, 50, 0.64)";
+const HINT_DIM = "rgba(20, 28, 50, 0.42)";
 
 function overlap(a: Box, b: Box): number {
   const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left);
@@ -53,9 +54,13 @@ interface Props {
   /** Accessible name for the dialogue. */
   label: string;
   children: ReactNode;
+  /** "hint": lighter dimming, a small card, and clicking the dimmed area closes it. */
+  tone?: "tutorial" | "hint";
+  onDismiss?: () => void;
 }
 
-export function TutorialSpotlight({ target, label, children }: Props) {
+export function TutorialSpotlight({ target, label, children, tone = "tutorial", onDismiss }: Props) {
+  const DIM = tone === "hint" ? HINT_DIM : TUTORIAL_DIM;
   const [box, setBox] = useState<Box | null>(null);
   const [view, setView] = useState({ w: 1280, h: 720 });
   const [card, setCard] = useState({ w: 360, h: 200 });
@@ -103,20 +108,20 @@ export function TutorialSpotlight({ target, label, children }: Props) {
   const pos = placeCard(hole, card.w, card.h, view.w, view.h);
 
   return (
-    <div className="spotlight" data-testid="tutorial-spotlight">
+    <div className={`spotlight spotlight-${tone}`} data-testid={tone === "hint" ? "hint-spotlight" : "tutorial-spotlight"}>
       {hole ? (
         <>
           {/* Four dim panels around the hole. They block clicks; the hole does not. */}
-          <div className="spotlight-dim" style={{ left: 0, top: 0, width: "100%", height: Math.max(0, hole.top), background: DIM }} />
-          <div className="spotlight-dim" style={{ left: 0, top: hole.top + hole.height, width: "100%", bottom: 0, background: DIM }} />
-          <div className="spotlight-dim" style={{ left: 0, top: hole.top, width: Math.max(0, hole.left), height: hole.height, background: DIM }} />
-          <div className="spotlight-dim" style={{ left: hole.left + hole.width, top: hole.top, right: 0, height: hole.height, background: DIM }} />
+          <div className="spotlight-dim" onClick={onDismiss} style={{ left: 0, top: 0, width: "100%", height: Math.max(0, hole.top), background: DIM }} />
+          <div className="spotlight-dim" onClick={onDismiss} style={{ left: 0, top: hole.top + hole.height, width: "100%", bottom: 0, background: DIM }} />
+          <div className="spotlight-dim" onClick={onDismiss} style={{ left: 0, top: hole.top, width: Math.max(0, hole.left), height: hole.height, background: DIM }} />
+          <div className="spotlight-dim" onClick={onDismiss} style={{ left: hole.left + hole.width, top: hole.top, right: 0, height: hole.height, background: DIM }} />
           <div className="spotlight-frame" style={{ left: hole.left, top: hole.top, width: hole.width, height: hole.height }} aria-hidden="true">
             <span className="spotlight-pointer" />
           </div>
         </>
       ) : (
-        <div className="spotlight-dim" style={{ inset: 0, background: DIM }} />
+        <div className="spotlight-dim" onClick={onDismiss} style={{ inset: 0, background: DIM }} />
       )}
       <div
         ref={cardRef}

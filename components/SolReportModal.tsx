@@ -40,14 +40,14 @@ export function SolReportModal({ report, preview = false, onClose, closeLabel, n
         </button>
       }
     >
-      <p className="mb-2 text-[14px]">
+      <p className="mb-2 text-[length:calc(14px*var(--ts))]">
         Weather: <strong>{WEATHER_TEXT[report.weather].label}</strong> ({WEATHER_TEXT[report.weather].note}).{" "}
         {preview
           ? "This is what will happen if you advance now. Surprise events are not included."
           : "Here is exactly what changed and why."}
       </p>
       {note && (
-        <p className="mb-2 border-[3px] border-ink bg-gold p-2 text-[14px] font-bold">
+        <p className="mb-2 border-[3px] border-ink bg-gold p-2 text-[length:calc(14px*var(--ts))] font-bold">
           Laika: “{note}”
         </p>
       )}
@@ -70,7 +70,7 @@ export function SolReportModal({ report, preview = false, onClose, closeLabel, n
                 <th scope="row" style={{ background: "#fff" }}>
                   <div className="font-extrabold uppercase">{label}</div>
                   {r.lines.length > 0 && (
-                    <ul className="text-[12px] font-normal">
+                    <ul className="text-[length:calc(12px*var(--ts))] font-normal">
                       {r.lines.map((l) => (
                         <li key={l.label}>
                           {sign(round1(l.amount))} {l.label}
@@ -78,7 +78,7 @@ export function SolReportModal({ report, preview = false, onClose, closeLabel, n
                       ))}
                     </ul>
                   )}
-                  {r.lines.length === 0 && <div className="text-[12px] font-normal">No daily change.</div>}
+                  {r.lines.length === 0 && <div className="text-[length:calc(12px*var(--ts))] font-normal">No daily change.</div>}
                 </th>
                 <td className="tabular-nums">{r.before}</td>
                 <td className="tabular-nums font-extrabold" style={{ background: good === null ? "#fff" : good ? "#81C995" : "#F2CA76" }}>
@@ -93,7 +93,7 @@ export function SolReportModal({ report, preview = false, onClose, closeLabel, n
       {report.notes.length > 0 && (
         <div className="mt-3 border-[3px] border-ink bg-white p-2">
           <div className="font-extrabold uppercase">Engineer&apos;s notes</div>
-          <ul className="list-disc pl-5 text-[14px]">
+          <ul className="list-disc pl-5 text-[length:calc(14px*var(--ts))]">
             {report.notes.map((n) => (
               <li key={n}>{n}</li>
             ))}
@@ -145,7 +145,7 @@ export function SolSummaryModal({ report, deliveries, continueLabel, onContinue,
                 <span className="font-extrabold uppercase">{label}</span>
                 <span
                   className="tag tabular-nums"
-                  style={{ background: good === null ? "#fff" : good ? "#81C995" : "#F2CA76", fontSize: 14, minWidth: 64, textAlign: "center" }}
+                  style={{ background: good === null ? "#fff" : good ? "#81C995" : "#F2CA76", fontSize: "calc(14px * var(--ts))", minWidth: 64, textAlign: "center" }}
                 >
                   {sign(delta)}
                 </span>
@@ -154,13 +154,13 @@ export function SolSummaryModal({ report, deliveries, continueLabel, onContinue,
           })}
         </ul>
         <p
-          className="mt-2 border-[3px] border-ink p-2 text-[15px] font-bold"
+          className="mt-2 border-[3px] border-ink p-2 text-[length:calc(15px*var(--ts))] font-bold"
           style={{ background: headline.tone === "bad" ? "#ED695B" : headline.tone === "warn" ? "#F2CA76" : "#81C995", color: headline.tone === "bad" ? "#fff" : "#2a1a22" }}
         >
           {headline.message}
         </p>
         {delivered > 0 && (
-          <p className="mt-2 border-[3px] border-ink bg-white p-2 text-[14px] font-bold" data-testid="delivery-note">
+          <p className="mt-2 border-[3px] border-ink bg-white p-2 text-[length:calc(14px*var(--ts))] font-bold" data-testid="delivery-note">
             Supplies! Mission Control sent {delivered} materials{deliveries.some((d) => d.kind === "emergency") ? " (emergency supplies)" : ""}!
           </p>
         )}

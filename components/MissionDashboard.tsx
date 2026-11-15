@@ -11,6 +11,9 @@ import { getLaikaLine } from "@/data/dialogue";
 import { getNextAction } from "@/data/guidance";
 import { missionText, missionWhy } from "@/game/missions";
 import { GEAR_PERKS } from "@/game/gears";
+import { SIMPLE, useSimple } from "@/data/simple";
+import { getHint, type Hint } from "@/game/hints";
+import { useUiPrefs } from "@/lib/prefs";
 import { INSIGHTS } from "@/game/insights";
 import { playSound } from "@/lib/sound";
 import { MODULES } from "@/data/modules";
@@ -26,7 +29,7 @@ import { EventOutcomeModal, MissionEventModal } from "./MissionEventModal";
 import { MissionLogList } from "./MissionLog";
 import { Modal } from "./Modal";
 import { BuildingPanel, EngineeringPanel } from "./ModuleInspector";
-import { PixelMarsOutpost } from "./PixelMarsOutpost";
+import { PixelMarsOutpost, UPGRADE_REVEAL_DELAY, type OutpostVisit } from "./PixelMarsOutpost";
 import { PixelSprite } from "./pixel/PixelSprite";
 import { earnedGear, GEAR, ICONS } from "./pixel/sprites";
 import { Minigame } from "./Minigame";
@@ -66,6 +69,9 @@ interface Props {
   onRestart: () => void;
 }
 
+/** Idle play time before the Hint button glows, and before an automatic hint appears. */
+const AUTO_HINT_MS: [number, number] = [60000, 75000];
+
 export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) {
   const [selected, setSelected] = useState<ModuleId | null>(null);
   const [overlay, setOverlay] = useState<Overlay>(null);
@@ -80,8 +86,12 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   const [toast, setToast] = useState<string | null>(null);
   const [reveal, setReveal] = useState<{ id: ModuleId; level: number } | null>(null);
   // After a build, Laika walks over to the building (presentation only).
-  const [visit, setVisit] = useState<{ id: ModuleId; key: number } | null>(null);
+  const [visit, setVisit] = useState<OutpostVisit | null>(null);
   const [talking, setTalking] = useState(false);
+  const [hint, setHint] = useState<(Hint & { auto?: boolean }) | null>(null);
+  const [hintPulse, setHintPulse] = useState(false);
+  const [autoHintSol, setAutoHintSol] = useState<number | null>(null);
+  const simple = useSimple();
   const [scienceFocus, setScienceFocus] = useState<string | undefined>(undefined);
   // A confirmed build waiting on the optional minigame. Dispatched exactly once.
   const [build, setBuild] = useState<{ kind: "upgrade" | "repair"; id: ModuleId } | null>(null);
@@ -156,8 +166,13 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
     const level = state.modules[action.moduleId].level;
     setSelected(action.moduleId);
     if (action.kind === "upgrade") {
-      setReveal({ id: action.moduleId, level });
-      return;
+      // The engine has already applied the upgrade. What follows is presentation only:
+      // Laika walks over, the building shakes with a "POOSH!", then the new level is revealed.
+      const id = action.moduleId;
+      setVisit((v) => ({ id, key: (v?.key ?? 0) + 1, impact: true, held: true }));
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const t = window.setTimeout(() => setReveal({ id, level }), reduce ? 400 : UPGRADE_REVEAL_DELAY);
+      return () => window.clearTimeout(t);
     }
     setVisit((v) => ({ id: action.moduleId as ModuleId, key: (v?.key ?? 0) + 1 }));
     setFlash({ id: action.moduleId, text: "REPAIRED!" });
@@ -293,9 +308,9 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
           cost={state.lastAction?.cost ?? 0}
           gears={state.gears}
           onClose={() => {
-            const id = reveal.id;
             setReveal(null);
-            setVisit((v) => ({ id, key: (v?.key ?? 0) + 1 }));
+            // Laika does her happy reaction now, then walks home.
+            setVisit((v) => (v ? { ...v, held: false } : v));
           }}
         />
       );
@@ -377,6 +392,67 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   })();
 
   const spotlightOn = stage !== null && modal === null && !splash;
+
+  // ---- Hints: point at one real control. They never act for the player. ----
+  const hintFree = playing && !spotlightOn && modal === null && !splash && overlay === null && reveal === null && build === null;
+  const showHint = () => {
+    const h = getHint(state);
+    setHintPulse(false);
+    setHint(h);
+    if (h) playSound("tutorial");
+  };
+  // Any interaction closes a hint (the click on the highlighted control still works).
+  useEffect(() => {
+    if (!hint) return;
+    let armed = false;
+    const arm = window.setTimeout(() => (armed = true), 250);
+    const close = () => armed && setHint(null);
+    window.addEventListener("pointerdown", close, true);
+    window.addEventListener("keydown", close, true);
+    return () => {
+      window.clearTimeout(arm);
+      window.removeEventListener("pointerdown", close, true);
+      window.removeEventListener("keydown", close, true);
+    };
+  }, [hint]);
+  useEffect(() => setHint(null), [state.sol, state.actionsLeft, state.pendingEvent, state.greenhouseMode]);
+  // Automatic hints: only after real idle time on a calm screen, at most once per sol.
+  const ui = useUiPrefs();
+  const idleMs = useRef(0);
+  useEffect(() => {
+    const reset = () => {
+      idleMs.current = 0;
+      setHintPulse(false);
+    };
+    window.addEventListener("pointerdown", reset, true);
+    window.addEventListener("keydown", reset, true);
+    window.addEventListener("wheel", reset, true);
+    return () => {
+      window.removeEventListener("pointerdown", reset, true);
+      window.removeEventListener("keydown", reset, true);
+      window.removeEventListener("wheel", reset, true);
+    };
+  }, []);
+  useEffect(() => {
+    idleMs.current = 0;
+  }, [state.sol]);
+  const autoReady = ui.autoHints && hintFree && !hint && autoHintSol !== state.sol;
+  useEffect(() => {
+    if (!autoReady) return;
+    const timing = (window as unknown as { __LAIKA_HINT_MS__?: [number, number] }).__LAIKA_HINT_MS__ ?? AUTO_HINT_MS;
+    const t = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return; // only real, visible play time counts
+      idleMs.current += 500;
+      if (idleMs.current >= timing[0]) setHintPulse(true);
+      if (idleMs.current >= timing[1]) {
+        setAutoHintSol(state.sol);
+        idleMs.current = 0;
+        const h = getHint(state);
+        setHint(h ? { ...h, auto: true } : null);
+      }
+    }, 500);
+    return () => window.clearInterval(t);
+  }, [autoReady, state]);
   const insight = calm && modal === null && state.insightQueue.length > 0 ? INSIGHTS[state.insightQueue[0]] : null;
   // While the spotlight is up, only the region holding the target can be used.
   const locked = (region: Exclude<Region, null>) => (spotlightOn && liveRegion !== region ? true : undefined);
@@ -391,14 +467,14 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   return (
     <main className="mx-auto flex max-w-[1400px] flex-col gap-2 p-2 sm:p-3 lg:h-[100dvh] lg:min-h-[600px]">
       {warnings.length > 0 && (
-        <div className="panel px-2 py-1 text-[14px] font-extrabold" role="alert" style={{ background: "#ED695B", color: "#fff" }}>
+        <div className="panel px-2 py-1 text-[length:calc(14px*var(--ts))] font-extrabold" role="alert" style={{ background: "#ED695B", color: "#fff" }}>
           {warnings.map((w) => (
             <div key={w}>⚠ {w}</div>
           ))}
         </div>
       )}
       {state.notice && (
-        <div className="panel flex items-center justify-between gap-2 p-2 text-[14px] font-bold" role="alert">
+        <div className="panel flex items-center justify-between gap-2 p-2 text-[length:calc(14px*var(--ts))] font-bold" role="alert">
           <span>✕ {state.notice}</span>
           <button type="button" className="btn btn-gray btn-small" onClick={() => dispatch({ type: "CLEAR_NOTICE" })}>
             OK
@@ -418,15 +494,15 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
             >
               <div className="flex gap-2">
                 <div className="panel-dark flex flex-1 flex-col justify-center px-2 py-1 text-center leading-tight" aria-label={`Sol ${state.sol} of ${state.maxSols}`}>
-                  <div className="text-[10px] font-extrabold uppercase tracking-wide">Sol</div>
-                  <div className="text-[18px] font-extrabold tabular-nums">
+                  <div className="text-[length:calc(10px*var(--ts))] font-extrabold uppercase tracking-wide">Sol</div>
+                  <div className="text-[length:calc(18px*var(--ts))] font-extrabold tabular-nums">
                     {state.sol}
-                    <span className="text-[11px]">/{state.maxSols}</span>
+                    <span className="text-[length:calc(11px*var(--ts))]">/{state.maxSols}</span>
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col items-center justify-center border-[3px] border-ink bg-cream px-1 text-center leading-tight" aria-label={`Weather today: ${weather.label}`}>
                   <PixelSprite grid={ICONS[weather.icon]} scale={2} />
-                  <div className="text-[9px] font-extrabold uppercase">{weather.label}</div>
+                  <div className="text-[length:calc(9px*var(--ts))] font-extrabold uppercase">{weather.label}</div>
                 </div>
               </div>
               <Reveal
@@ -437,14 +513,14 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                 trigger={
                   <span className="flex w-full items-center justify-center gap-2 border-[3px] border-ink bg-navy px-2 py-1 text-cream" data-gears={state.gears}>
                     <PixelSprite grid={ICONS.gear} scale={2} />
-                    <span className="text-[15px] font-extrabold tabular-nums">× {state.gears}</span>
+                    <span className="text-[length:calc(15px*var(--ts))] font-extrabold tabular-nums">× {state.gears}</span>
                   </span>
                 }
               >
-                <span className="block text-[12px] font-extrabold uppercase">Gears: {state.gears}</span>
-                <span className="block text-[12px]">Every upgrade earns 1 Gear. Gears unlock small bonuses:</span>
+                <span className="block text-[length:calc(12px*var(--ts))] font-extrabold uppercase">Gears: {state.gears}</span>
+                <span className="block text-[length:calc(12px*var(--ts))]">Every upgrade earns 1 Gear. Gears unlock small bonuses:</span>
                 {GEAR_PERKS.map((p) => (
-                  <span key={p.id} className="mt-1 block text-[12px] font-bold">
+                  <span key={p.id} className="mt-1 block text-[length:calc(12px*var(--ts))] font-bold">
                     {state.gears >= p.at ? "✓" : "○"} {p.at} Gears: {p.name} ({p.text})
                   </span>
                 ))}
@@ -468,7 +544,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               onSelect={select}
               mood={laika.mood}
               sheltering={fx.sheltering}
-              highlight={null}
+              highlight={hint?.moduleId ?? null}
               gear={gear}
               fill={wide}
               visit={visit}
@@ -498,8 +574,8 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                 </span>
               }
             >
-              <span className="block text-[11px] font-extrabold uppercase text-maroon">Laika says</span>
-              <span className="block text-[14px] font-bold" data-testid="laika-text">
+              <span className="block text-[length:calc(11px*var(--ts))] font-extrabold uppercase text-maroon">Laika says</span>
+              <span className="block text-[length:calc(14px*var(--ts))] font-bold" data-testid="laika-text">
                 “{laika.text}”
               </span>
             </Reveal>
@@ -507,19 +583,31 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               <div className="mission-chip" data-testid="daily-mission" data-done={mission.done}>
                 <span aria-hidden="true">{mission.done ? "★" : "☆"}</span>
                 <span>
-                  <span className="text-[10px] font-extrabold uppercase text-maroon">Today&apos;s mission</span>
+                  <span className="text-[length:calc(10px*var(--ts))] font-extrabold uppercase text-maroon">Today&apos;s mission</span>
                   <span className="block">
                     {missionText(mission)}
                     {mission.done ? " — done!" : ""}
                   </span>
                 </span>
               </div>
-              <p className="mt-1 text-[12px]">{mission.done ? "Great job! Do anything else you like." : missionWhy(mission)}</p>
+              <p className="mt-1 text-[length:calc(12px*var(--ts))]">{mission.done ? "Great job! Do anything else you like." : missionWhy(mission)}</p>
             </div>
             <span className="flex items-center gap-2">
               <button
                 type="button"
-                className="inline-flex h-[34px] w-[34px] items-center justify-center border-[3px] border-ink bg-[#66708c] text-[18px] text-cream"
+                id="btn-hint"
+                className={`btn btn-small hint-btn${hintPulse ? " hint-pulse" : ""}`}
+                onClick={showHint}
+                disabled={!hintFree}
+                aria-label="Hint: show me something useful to do"
+                data-pulse={hintPulse ? "on" : "off"}
+              >
+                <PixelSprite grid={ICONS.bulb} scale={2} />
+                <span>Hint</span>
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-[34px] w-[34px] items-center justify-center border-[3px] border-ink bg-[#66708c] text-[length:calc(18px*var(--ts))] text-cream"
                 onClick={() => setOverlay("settings")}
                 aria-label="Settings: sound, help and restart"
                 title="Settings"
@@ -532,13 +620,13 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                 testId="advance-hint"
                 label={`Tip before you advance: ${nextAction}`}
                 trigger={
-                  <span className="relative inline-flex h-[34px] w-[34px] items-center justify-center border-[3px] border-ink bg-gold text-[18px] font-extrabold">
+                  <span className="relative inline-flex h-[34px] w-[34px] items-center justify-center border-[3px] border-ink bg-gold text-[length:calc(18px*var(--ts))] font-extrabold">
                     ?
                   </span>
                 }
               >
-                <span className="block text-[11px] font-extrabold uppercase text-maroon">Before you advance</span>
-                <span className="block text-[13px] font-bold" data-testid="next-action">
+                <span className="block text-[length:calc(11px*var(--ts))] font-extrabold uppercase text-maroon">Before you advance</span>
+                <span className="block text-[length:calc(13px*var(--ts))] font-bold" data-testid="next-action">
                   {nextAction}
                 </span>
               </Reveal>
@@ -568,14 +656,14 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
           </div>
           <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="scroll-y min-h-0 flex-1 p-3" data-tab={tab}>
             {tab === "overview" && (
-              <div className="space-y-2 text-[14px]">
+              <div className="overview-fill text-[length:calc(16px*var(--ts))]" data-testid="overview">
                 <p>
                   <strong className="uppercase">Mission: </strong>
-                  Keep Laika safe for {state.maxSols} sols and get the base ready for the crew.
+                  {simple ? SIMPLE.mission : `Keep Laika safe for ${state.maxSols} sols and get the base ready for the crew.`}
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <WeatherBadge label="Today" weather={state.weather} />
-                  <WeatherBadge label="Tomorrow" weather={state.forecast} />
+                <div className="grid grid-cols-1 gap-2">
+                  <WeatherBadge label="Today" weather={state.weather} big />
+                  <WeatherBadge label="Tomorrow" weather={state.forecast} big />
                 </div>
                 {state.effects.length > 0 && (
                   <div className="flex flex-wrap gap-1" aria-label="Active effects">
@@ -587,7 +675,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                   </div>
                 )}
                 <div className="border-[3px] border-ink bg-white p-2">
-                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-maroon">If you advance now</div>
+                  <div className="mb-1 text-[length:calc(13px*var(--ts))] font-extrabold uppercase tracking-wide text-maroon">If you advance now</div>
                   <div className="mb-2 flex flex-wrap gap-1" aria-live="polite">
                     {PREDICT.map(({ key, label }) => (
                       <span key={key} className="tag tabular-nums" data-predict={key}>
@@ -598,11 +686,11 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                   <button type="button" id="btn-preview" className="btn btn-gray w-full" onClick={openPreview} disabled={!playing}>
                     Preview Next Sol
                   </button>
-                  {!gate.ok && gate.reason && <div className="mt-1 text-[12px]">{gate.reason}</div>}
+                  {!gate.ok && gate.reason && <div className="mt-1 text-[length:calc(12px*var(--ts))]">{gate.reason}</div>}
                 </div>
-                <div className="border-[3px] border-ink bg-white p-2" data-testid="outpost-glance">
-                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-maroon">Outpost at a glance</div>
-                  <ul className="grid gap-1">
+                <div className="glance-box border-[3px] border-ink bg-white p-2" data-testid="outpost-glance">
+                  <div className="mb-1 text-[length:calc(13px*var(--ts))] font-extrabold uppercase tracking-wide text-maroon">Outpost at a glance</div>
+                  <ul className="glance-list grid gap-1">
                     {MODULE_IDS.map((id) => {
                       const m = state.modules[id];
                       const low = m.condition < 60;
@@ -610,7 +698,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                         <li key={id}>
                           <button
                             type="button"
-                            className="flex w-full items-center justify-between gap-1 border-[2px] border-ink px-1 text-left text-[11px] font-bold"
+                            className="flex h-full w-full items-center justify-between gap-1 border-[2px] border-ink px-2 py-1 text-left text-[length:calc(14px*var(--ts))] font-bold"
                             style={{ background: low ? "#F2CA76" : "#FFF1D0" }}
                             onClick={() => select(id)}
                             aria-label={`${MODULES[id].name}: level ${m.level}, condition ${Math.round(m.condition)} percent`}
@@ -625,7 +713,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                     })}
                   </ul>
                 </div>
-                <p className="text-[12px]">
+                <p className="text-[length:calc(14px*var(--ts))]">
                   Difficulty: {difficultyOf(state).label}. {saveOk === false ? "✕ Not saved." : "✓ Saved."}
                 </p>
               </div>
@@ -651,7 +739,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
             )}
             {tab === "log" && <MissionLogList log={state.log} maxHeight={380} compact />}
             {tab === "science" && (
-              <div className="space-y-2 text-[14px]">
+              <div className="space-y-2 text-[length:calc(14px*var(--ts))]">
                 <p>Real space science behind each building. Tap a card to read it.</p>
                 <div className="grid grid-cols-2 gap-1">
                   {SCIENCE_CARDS.map((c) => (
@@ -669,13 +757,13 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                   ))}
                 </div>
                 <div className="border-[3px] border-ink bg-white p-2" data-testid="insights-found">
-                  <div className="text-[12px] font-extrabold uppercase">
+                  <div className="text-[length:calc(12px*var(--ts))] font-extrabold uppercase">
                     Insights found: {state.insights.length}/{Object.keys(INSIGHTS).length}
                   </div>
                   {state.insights.length === 0 ? (
-                    <p className="text-[12px]">Play to discover engineering ideas.</p>
+                    <p className="text-[length:calc(12px*var(--ts))]">Play to discover engineering ideas.</p>
                   ) : (
-                    <ul className="list-disc pl-5 text-[12px]">
+                    <ul className="list-disc pl-5 text-[length:calc(12px*var(--ts))]">
                       {state.insights.map((id) => (
                         <li key={id}>{INSIGHTS[id].text}</li>
                       ))}
@@ -701,6 +789,18 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
 
       {modal}
 
+      {hint && (hintFree || hint.kind === "event") && (
+        <TutorialSpotlight target={hint.target} label={`Hint: ${hint.label}`} tone="hint" onDismiss={() => setHint(null)}>
+          <div className="flex items-center gap-2 p-2" data-testid="hint-card" data-hint={hint.kind} data-auto={hint.auto ? "yes" : "no"}>
+            <PixelSprite grid={ICONS.bulb} scale={2} />
+            <strong className="text-[length:calc(15px*var(--ts))] uppercase">{hint.label}</strong>
+            <button type="button" className="btn btn-small btn-gray ml-auto" onClick={() => setHint(null)}>
+              OK
+            </button>
+          </div>
+        </TutorialSpotlight>
+      )}
+
       {spotlightOn && stage && (
         <TutorialSpotlight target={tutorialTarget} label={`Training ${tut + 1} of ${TUTORIAL_STAGES.length}: ${stage.title}`}>
           <div className="panel-title">
@@ -718,12 +818,12 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               <LaikaSprite mood={tut === 5 ? "happy" : "idle"} scale={2} talking={talking} />
             </div>
             <div className="min-w-0 flex-1" aria-live="polite">
-              {stage.lines.map((line) => (
-                <p key={line} className="text-[14px] font-bold leading-snug">
+              {(simple ? [SIMPLE.tutorial[tut] ?? stage.lines[0]] : stage.lines).map((line) => (
+                <p key={line} className="text-[length:calc(14px*var(--ts))] font-bold leading-snug">
                   “{line}”
                 </p>
               ))}
-              <p className="mt-1 text-[13px] leading-snug" data-testid="tutorial-task">
+              <p className="mt-1 text-[length:calc(13px*var(--ts))] leading-snug" data-testid="tutorial-task">
                 <span className="tag tag-warn">Do this</span> {tutorialTask}
               </p>
             </div>
@@ -751,7 +851,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
           <div className="panel-title">
             <span>💡 Engineering insight</span>
           </div>
-          <div className="space-y-2 p-2 text-[14px]">
+          <div className="space-y-2 p-2 text-[length:calc(14px*var(--ts))]">
             <p className="font-bold">{insight.text}</p>
             <div className="flex flex-wrap justify-end gap-2">
               <button
@@ -774,7 +874,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
       )}
       {toast && (
         <div className="toast" role="status">
-          <div className="panel px-3 py-2 text-[14px] font-bold" style={{ background: "#81C995" }}>
+          <div className="panel px-3 py-2 text-[length:calc(14px*var(--ts))] font-bold" style={{ background: "#81C995" }}>
             {toast}
           </div>
         </div>
@@ -782,21 +882,21 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
       {splash && (
         <button type="button" className="sol-splash" onClick={() => setSplashSeenSol(state.sol)} aria-label={`Sol ${state.sol}. A new day on Mars. Press to continue.`} autoFocus>
           <span className="sol-splash-card panel-dark">
-            <span className="block text-[56px] font-extrabold leading-none">SOL {state.sol}</span>
-            <span className="mt-2 block text-[16px] font-bold">A new day on Mars.</span>
-            <span className="mt-2 block text-[14px] font-extrabold text-gold" data-testid="sol-survived">
+            <span className="block text-[length:calc(56px*var(--ts))] font-extrabold leading-none">SOL {state.sol}</span>
+            <span className="mt-2 block text-[length:calc(16px*var(--ts))] font-bold">A new day on Mars.</span>
+            <span className="mt-2 block text-[length:calc(14px*var(--ts))] font-extrabold text-gold" data-testid="sol-survived">
               ★ Sol {state.sol - 1} survived!
             </span>
             {newGear && (
               <span className="mt-3 flex items-center justify-center gap-3 border-[3px] border-gold p-2" data-testid="gear-unlock">
                 <LaikaSprite mood="celebrate" scale={3} gear={gear} />
                 <span className="text-left">
-                  <span className="block text-[11px] font-extrabold uppercase tracking-widest">New outfit piece for Laika!</span>
-                  <span className="block text-[18px] font-extrabold text-gold">{newGear.name}</span>
+                  <span className="block text-[length:calc(11px*var(--ts))] font-extrabold uppercase tracking-widest">New outfit piece for Laika!</span>
+                  <span className="block text-[length:calc(18px*var(--ts))] font-extrabold text-gold">{newGear.name}</span>
                 </span>
               </span>
             )}
-            <span className="mt-3 block text-[11px] uppercase tracking-widest opacity-80">Click to skip</span>
+            <span className="mt-3 block text-[length:calc(11px*var(--ts))] uppercase tracking-widest opacity-80">Click to skip</span>
           </span>
         </button>
       )}

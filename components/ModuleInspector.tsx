@@ -3,6 +3,7 @@
 // Building information (BUILDINGS tab) and engineering actions (ENGINEERING
 // tab). Both read the single MissionState and call the existing engine
 // functions; nothing here changes the rules.
+import { SIMPLE, upgradeReason, useSimple } from "@/data/simple";
 import { useState, type Dispatch } from "react";
 import { MODULES } from "@/data/modules";
 import { CONFIG, conditionFactor, round1 } from "@/game/config";
@@ -63,7 +64,7 @@ interface BuildingProps {
 export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChosen, onOpenEngineering, onOpenScience }: BuildingProps) {
   if (!moduleId) {
     return (
-      <div className="space-y-2 text-[14px]">
+      <div className="space-y-2 text-[length:calc(14px*var(--ts))]">
         <p>Click a building in the outpost, or pick one here.</p>
         <div className="grid grid-cols-2 gap-2">
           {MODULE_IDS.map((id) => (
@@ -78,16 +79,17 @@ export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChose
   const info = MODULES[moduleId];
   const m = state.modules[moduleId];
   const tag = conditionTag(m.condition);
+  const simple = useSimple();
   return (
-    <div className="space-y-2 text-[14px]" data-testid="building-panel" data-building={moduleId}>
+    <div className="space-y-2 text-[length:calc(14px*var(--ts))]" data-testid="building-panel" data-building={moduleId}>
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="h-pixel text-[16px]">{info.name}</h2>
+        <h2 className="h-pixel text-[length:calc(16px*var(--ts))]">{info.name}</h2>
         <span className="tag">Level {m.level}/3</span>
         <span className={`tag ${tag.cls}`}>
           {Math.round(m.condition)}% · {tag.word}
         </span>
       </div>
-      <p>{info.tip}</p>
+      <p data-explain={simple ? "simple" : "detailed"}>{simple ? SIMPLE.modules[moduleId] : info.tip}</p>
       <p>
         <strong className="uppercase">Now: </strong>
         {liveStatus(state, moduleId)}
@@ -109,7 +111,7 @@ export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChose
                 }}
               >
                 {mode}
-                <span className="block text-[10px] normal-case">
+                <span className="block text-[length:calc(10px*var(--ts))] normal-case">
                   −{CONFIG.greenhousePower[mode]} power
                   <br />+{round1(greenhouseHarvestRate(state, mode))} food
                 </span>
@@ -119,7 +121,7 @@ export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChose
         </div>
       )}
 
-      <details className="text-[13px]" data-testid="why-matters">
+      <details className="text-[length:calc(13px*var(--ts))]" data-testid="why-matters">
         <summary className="cursor-pointer font-bold">Why does this matter?</summary>
         <p className="mt-1">{info.why}</p>
         <button type="button" className="btn btn-gray btn-small mt-1" onClick={() => onOpenScience(info.card)}>
@@ -127,7 +129,7 @@ export function BuildingPanel({ state, moduleId, dispatch, onSelect, onModeChose
         </button>
       </details>
 
-      <details className="text-[13px]">
+      <details className="text-[length:calc(13px*var(--ts))]">
         <summary className="cursor-pointer font-bold">More about this building</summary>
         <p className="mt-1">{info.role}</p>
         <p>{info.levelEffects[m.level - 1]}</p>
@@ -161,7 +163,7 @@ const BEFORE_ROWS: { key: "power" | "lifeSupport" | "materials" | "food" | "radi
 function BeforeYouPay({ state, cost }: { state: MissionState; cost: number }) {
   const r = state.resources;
   return (
-    <div className="mt-1 border-[2px] border-ink bg-cream p-2 text-[12px]" data-testid="before-you-pay">
+    <div className="mt-1 border-[2px] border-ink bg-cream p-2 text-[length:calc(12px*var(--ts))]" data-testid="before-you-pay">
       <div className="font-extrabold uppercase">Before you pay</div>
       <ul className="grid grid-cols-2 gap-x-3">
         {BEFORE_ROWS.map(({ key, label }) => (
@@ -191,7 +193,7 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
 
   const picker = (
     <div>
-      <div className="mb-1 text-[12px] font-extrabold uppercase">Pick a building</div>
+      <div className="mb-1 text-[length:calc(12px*var(--ts))] font-extrabold uppercase">Pick a building</div>
       <div className="grid grid-cols-2 gap-1">
         {MODULE_IDS.map((id) => {
           const m = state.modules[id];
@@ -204,7 +206,7 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
               onClick={() => onSelect(id)}
             >
               {MODULES[id].name}
-              <span className="block text-[10px] normal-case">
+              <span className="block text-[length:calc(10px*var(--ts))] normal-case">
                 Lv {m.level} · {Math.round(m.condition)}%{m.condition < 60 ? " !" : ""}
               </span>
             </button>
@@ -216,7 +218,7 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
 
   if (!moduleId) {
     return (
-      <div className="space-y-2 text-[14px]">
+      <div className="space-y-2 text-[length:calc(14px*var(--ts))]">
         {header}
         <p>You can do one upgrade or one repair each sol.</p>
         {picker}
@@ -228,6 +230,8 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
   const m = state.modules[moduleId];
   const up = canUpgrade(state, moduleId);
   const rep = canRepair(state, moduleId);
+  const simple = useSimple();
+  const have = state.resources.materials;
   const pending = confirm && confirm.id === moduleId ? confirm.kind : null;
   const afterRepair = Math.min(100, Math.round(m.condition) + repairAmountFor(state));
 
@@ -237,21 +241,21 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
   };
 
   return (
-    <div className="space-y-2 text-[14px]" data-testid="engineering-panel">
+    <div className="space-y-2 text-[length:calc(14px*var(--ts))]" data-testid="engineering-panel">
       {header}
-      <h2 className="h-pixel text-[15px]">{info.name}</h2>
+      <h2 className="h-pixel text-[length:calc(15px*var(--ts))]">{info.name}</h2>
 
       <section className="border-[3px] border-ink bg-white p-2" aria-label="Upgrade">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="h-pixel text-[14px]">▲ Upgrade</h3>
+          <h3 className="h-pixel text-[length:calc(14px*var(--ts))]">▲ Upgrade</h3>
           <span className="tag" style={{ background: "#6fb1f5" }}>
             Makes it stronger
           </span>
         </div>
         {m.level < 3 ? (
           <>
-            <p className="text-[13px]">Upgrade improves what a building can do.</p>
-            <p className="text-[13px]">
+            <p className="text-[length:calc(13px*var(--ts))]">{simple ? SIMPLE.upgrade : "Upgrade improves what a building can do."}</p>
+            <p className="text-[length:calc(13px*var(--ts))]">
               <strong>Level:</strong> {m.level} → {m.level + 1}
               <br />
               <strong>{info.stat.label}:</strong> {info.stat.values[m.level - 1]} → {info.stat.values[m.level]}
@@ -260,11 +264,11 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
             </p>
           </>
         ) : (
-          <p className="text-[13px]">This building is at the top level.</p>
+          <p className="text-[length:calc(13px*var(--ts))]">This building is at the top level.</p>
         )}
         {pending === "upgrade" ? (
           <div className="mt-1 border-[3px] border-ink bg-gold p-2" role="alert">
-            <div className="text-[13px] font-bold">Spend {up.cost} materials to upgrade?</div>
+            <div className="text-[length:calc(13px*var(--ts))] font-bold">Spend {up.cost} materials to upgrade?</div>
             <BeforeYouPay state={state} cost={up.cost} />
             <div className="mt-1 flex gap-2">
               <button type="button" className="btn btn-go btn-small" onClick={() => act("upgrade")}>
@@ -280,23 +284,23 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
             Upgrade{m.level < 3 ? ` (${up.cost})` : ""}
           </button>
         )}
-        {!up.ok && up.reason && pending !== "upgrade" && <p className="mt-1 text-[12px]">{up.reason}</p>}
+        {!up.ok && up.reason && pending !== "upgrade" && <p className="mt-1 text-[length:calc(12px*var(--ts))]">{upgradeReason(simple, up.reason, up.cost, have, "upgrade")}</p>}
       </section>
 
       <section className="border-[3px] border-ink bg-white p-2" aria-label="Repair">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="h-pixel text-[14px]">✚ Repair</h3>
+          <h3 className="h-pixel text-[length:calc(14px*var(--ts))]">✚ Repair</h3>
           <span className="tag tag-ok">Fixes damage</span>
         </div>
-        <p className="text-[13px]">Repair fixes a damaged building so it works properly again. The level stays the same.</p>
-        <p className="text-[13px]">
+        <p className="text-[length:calc(13px*var(--ts))]">{simple ? SIMPLE.repair : "Repair fixes a damaged building so it works properly again. The level stays the same."}</p>
+        <p className="text-[length:calc(13px*var(--ts))]">
           <strong>Condition:</strong> {Math.round(m.condition)}% → {afterRepair}%
           <br />
           <strong>Cost:</strong> {rep.cost} materials
         </p>
         {pending === "repair" ? (
           <div className="mt-1 border-[3px] border-ink bg-gold p-2" role="alert">
-            <div className="text-[13px] font-bold">Spend {rep.cost} materials to repair?</div>
+            <div className="text-[length:calc(13px*var(--ts))] font-bold">Spend {rep.cost} materials to repair?</div>
             <BeforeYouPay state={state} cost={rep.cost} />
             <div className="mt-1 flex gap-2">
               <button type="button" className="btn btn-go btn-small" onClick={() => act("repair")}>
@@ -312,10 +316,10 @@ export function EngineeringPanel({ state, moduleId, onStart, onSelect }: Enginee
             Repair ({rep.cost})
           </button>
         )}
-        {!rep.ok && rep.reason && pending !== "repair" && <p className="mt-1 text-[12px]">{rep.reason}</p>}
+        {!rep.ok && rep.reason && pending !== "repair" && <p className="mt-1 text-[length:calc(12px*var(--ts))]">{upgradeReason(simple, rep.reason, rep.cost, have, "repair")}</p>}
       </section>
 
-      <details className="text-[13px]">
+      <details className="text-[length:calc(13px*var(--ts))]">
         <summary className="cursor-pointer font-bold">Pick another building</summary>
         <div className="mt-1">{picker}</div>
       </details>

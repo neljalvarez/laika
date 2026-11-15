@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { preload } from "react-dom";
-import { MEMORIAL_PHOTO, MEMORIAL_TEXT, OPENING } from "@/data/memorial";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { OPENING } from "@/data/memorial";
 import { playSound } from "@/lib/sound";
 import { ROCKET } from "./Cutscene";
 import { LaikaFrames } from "./LaikaSprite";
@@ -89,7 +88,6 @@ export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onH
   const opening = phase !== "ready";
   return (
     <main className={`title-screen${opening ? " title-opening" : ""}`} data-opening={phase}>
-      {phase === "memorial" && <Memorial />}
       <section className="title-scene md:order-2" aria-label="LAIKA: Mission Red Planet">
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" shapeRendering="crispEdges" aria-hidden="true">
           {px(SCENE, "s")}
@@ -119,7 +117,7 @@ export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onH
           <h1>LAIKA</h1>
           <p>— MISSION: RED PLANET —</p>
         </div>
-        <p className="title-reveal absolute inset-x-0 bottom-0 bg-[rgba(20,28,50,0.82)] px-3 py-1 text-center text-[11px] text-cream">
+        <p className="title-reveal absolute inset-x-0 bottom-0 bg-[rgba(20,28,50,0.82)] px-3 py-1 text-center text-[length:calc(11px*var(--ts))] text-cream">
           <strong>This story is fiction.</strong> The real Laika flew on Sputnik 2 in 1957 and did not survive. A student project, not
           affiliated with or endorsed by NASA.
         </p>
@@ -141,7 +139,7 @@ export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onH
           <button type="button" className="btn btn-menu" onClick={onContinue} disabled={!hasSave} aria-describedby="continue-note">
             Continue
           </button>
-          <div id="continue-note" className="mt-1 text-center text-[11px]">
+          <div id="continue-note" className="mt-1 text-center text-[length:calc(11px*var(--ts))]">
             {hasSave ? `Saved mission found${savedSol ? ` (Sol ${savedSol})` : ""}.` : "No saved mission yet."}
           </div>
         </div>
@@ -173,14 +171,16 @@ export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onH
 }
 
 const SESSION_KEY = "laika-mission-red-planet/opening-seen";
-type OpeningPhase = "memorial" | "landing" | "ready";
+type OpeningPhase = "landing" | "ready";
 
 /**
- * Opening sequence, once per browser session: 2 s memorial, the rocket lands
- * at 3 s, the menu is ready at 3.5 s. All timers are cleared on unmount.
+ * Opening sequence, once per browser session: the rocket comes down and lands
+ * (about 1.6 s), then the title and menu appear (ready at about 2.1 s). The
+ * memorial for the real Laika now closes the successful ending instead.
+ * All timers are cleared on unmount.
  */
 function useOpening(): OpeningPhase {
-  const [phase, setPhase] = useState<OpeningPhase>("memorial");
+  const [phase, setPhase] = useState<OpeningPhase>("landing");
   // Before the first paint: skip everything if this session has already seen it.
   const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
   useIsoLayoutEffect(() => {
@@ -200,35 +200,10 @@ function useOpening(): OpeningPhase {
       // Not remembered; harmless.
     }
     const timers = [
-      window.setTimeout(() => setPhase("landing"), OPENING.memorialEnd),
       window.setTimeout(() => playSound("boom"), OPENING.rocketLands), // silent until the player has interacted
       window.setTimeout(() => setPhase("ready"), OPENING.menuReady),
     ];
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, []);
   return phase;
-}
-
-/** A quiet tribute to the real Laika. No button: it passes on its own. */
-function Memorial() {
-  const [failed, setFailed] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-  if (MEMORIAL_PHOTO) preload(MEMORIAL_PHOTO.src, { as: "image", fetchPriority: "high" });
-  // The page is pre-rendered, so the image can fail before React is listening: check once on mount.
-  useEffect(() => {
-    const img = imgRef.current;
-    if (img && img.complete && img.naturalWidth === 0) setFailed(true);
-  }, []);
-  const photo = failed ? null : MEMORIAL_PHOTO;
-  return (
-    <div className="memorial" role="img" aria-label={MEMORIAL_TEXT} data-testid="memorial">
-      <div className="memorial-inner">
-        {photo && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img ref={imgRef} src={photo.src} alt={photo.alt} className="memorial-photo" onError={() => setFailed(true)} />
-        )}
-        <p className="memorial-text">{MEMORIAL_TEXT}</p>
-      </div>
-    </div>
-  );
 }

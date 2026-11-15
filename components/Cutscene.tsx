@@ -3,14 +3,16 @@
 // In-engine cutscenes: a tiny timed scene player plus the intro and win-outro
 // stories. Everything is drawn with the game's own pixel art (no video files).
 // Cutscenes are presentation only: they never change mission state.
-import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
+import { MEMORIAL_PHOTO, MEMORIAL_TEXT } from "@/data/memorial";
 import { computeScore, ENDING_TEXT, gradeFor } from "@/game/scoring";
 import type { MissionState } from "@/game/types";
-import { playSound, type SoundName } from "@/lib/sound";
+import { playSound, setMusicSilenced, stopAllSfx, type SoundName } from "@/lib/sound";
 import { LaikaFrames } from "./LaikaSprite";
 import { MarsBackdrop } from "./PixelMarsOutpost";
-import { C, px, type Px } from "./pixel/moduleArt";
-import { earnedGear, type GearItem, type LaikaVariant } from "./pixel/sprites";
+import { C, ModuleArt, px, type Px } from "./pixel/moduleArt";
+import { gridRects, outlined } from "./pixel/PixelSprite";
+import { patchGrid, type GearItem, type Grid, type LaikaVariant } from "./pixel/sprites";
 
 const W = 320;
 const H = 180;
@@ -21,6 +23,12 @@ interface Scene {
   /** Sound cue when the scene starts, with an optional delay. */
   sound?: [SoundName, number?][];
   art: ReactElement;
+  /** HTML content instead of pixel art (used for the real photograph). */
+  html?: ReactElement;
+  /** No background music during this scene. */
+  silence?: boolean;
+  /** Plain black screen and no caption bar (memorial). */
+  black?: boolean;
 }
 
 // ---------- shared pixel art ----------
@@ -332,41 +340,404 @@ function introScenes(): Scene[] {
   ];
 }
 
+// ---------- characters for the endings (original pixel art) ----------
+/** Rescue astronaut, front view, 14×22. Same suit colours as Laika's. */
+const ASTRO_STAND: Grid = [
+  "....HHHHHH....",
+  "...HSSSSSSH...",
+  "..HSCCCCCCSH..",
+  "..HSCZZCCCSH..",
+  "..HSCCCCCCSH..",
+  "..HSSCCCCSSH..",
+  "...HSSSSSSH...",
+  "....RRRRRR....",
+  "..SSSSSSSSSS..",
+  ".SSSSYYYYSSSS.",
+  ".SSSSYRRYSSSS.",
+  "SSDSSYYYYSSDSS",
+  "SSDSSSSSSSSDSS",
+  "SS.SSSSSSSS.SS",
+  "YY.RRRRRRRR.YY",
+  "...SSSSSSSS...",
+  "...SSSS.SSSS..",
+  "...SSSS.SSSS..",
+  "...SSSS.SSSS..",
+  "...DDDD.DDDD..",
+  "..YYYYY.YYYYY.",
+  "..YYYYY.YYYYY.",
+];
+const ASTRO_STRIDE: Grid = patchGrid(ASTRO_STAND, [
+  [16, 0, "..SSSS..SSSS.."],
+  [17, 0, "..SSSS..SSSS.."],
+  [18, 0, ".SSSS....SSSS."],
+  [19, 0, ".DDDD....DDDD."],
+  [20, 0, "YYYYY....YYYYY"],
+  [21, 0, "YYYYY....YYYYY"],
+]);
+/** Kneeling: the same astronaut, lower, reaching out. */
+const ASTRO_KNEEL: Grid = [
+  "..............",
+  "..............",
+  "..............",
+  "..............",
+  ...ASTRO_STAND.slice(0, 13),
+  "SS.SSSSSSSS.SSYY",
+  "YY.RRRRRRRR...YY",
+  "..SSSSSSSSS...",
+  "..SSSSSSSSS...",
+  "..DDDDD.YYYYY.",
+].map((r) => r.slice(0, 14).padEnd(14, "."));
+
+function Astronaut({ x, y, scale = 1.6, pose = "stand" }: { x: number; y: number; scale?: number; pose?: "stand" | "walk" | "kneel" }) {
+  const a = pose === "kneel" ? ASTRO_KNEEL : ASTRO_STAND;
+  return (
+    <g transform={`translate(${x} ${y}) scale(${scale})`} aria-hidden="true">
+      {pose === "walk" ? (
+        <g className="laika laika-walk">
+          <g className="laika-frame-a">{gridRects(outlined(ASTRO_STAND), "aa")}</g>
+          <g className="laika-frame-b">{gridRects(outlined(ASTRO_STRIDE), "ab")}</g>
+        </g>
+      ) : (
+        gridRects(outlined(a), "as")
+      )}
+    </g>
+  );
+}
+
+/** Laika at home, without her suit, asleep: 30×10, profile, curled up. */
+const LAIKA_SLEEP: Grid = [
+  "....BB..BB....................",
+  "...BOOBBOOB...................",
+  "...OOOOOOOO..........OOOO.....",
+  "..OOONNOOOOO.....OOOOOOOOOO...",
+  ".OOOOOOOWWWOOOOOOOOOOOOOOOOO..",
+  "NWWOOOOWWWWWWOOOOOOOOOOOOOOOW.",
+  "WWWWWOWWWWWWWWWOOOOOOOOOOOOWWW",
+  ".WWWWWWWWWWWWWWWWOOOOOOOOOWWW.",
+  "..WWWWW.WWWWWWWWWWWWWWWWWWWW..",
+  "...WWW...WWWW......WWW..WWW...",
+];
+
+/** Simple cheering person: head, hair, shirt, arms (two frames: down / up). */
+function Person({ x, y, shirt, skin, hair, cheer = true, delay = 0 }: { x: number; y: number; shirt: string; skin: string; hair: string; cheer?: boolean; delay?: number }) {
+  const body: Px[] = [
+    [2, 0, 5, 2, hair],
+    [2, 2, 5, 4, skin],
+    [1, 6, 7, 7, shirt],
+    [2, 13, 2, 5, C.navy],
+    [5, 13, 2, 5, C.navy],
+  ];
+  const down: Px[] = [[0, 7, 1, 5, skin], [8, 7, 1, 5, skin]];
+  const up: Px[] = [[0, 2, 1, 5, skin], [8, 2, 1, 5, skin]];
+  return (
+    <g transform={`translate(${x} ${y})`} aria-hidden="true">
+      {px([[1, -1, 7, 1, C.out], [0, 6, 9, 1, C.out], ...body], "pb")}
+      {cheer ? (
+        <g className="laika" style={{ animationDelay: `${delay}s` }}>
+          <g className="laika-frame-a">{px(down, "pd")}</g>
+          <g className="laika-frame-b">{px(up, "pu")}</g>
+        </g>
+      ) : (
+        px(down, "pd")
+      )}
+    </g>
+  );
+}
+
+const CROWD: { x: number; shirt: string; skin: string; hair: string }[] = [
+  { x: 14, shirt: C.red, skin: "#f2c9a0", hair: "#6b3a1e" },
+  { x: 30, shirt: C.blue, skin: "#c68a5a", hair: C.out },
+  { x: 46, shirt: C.yellow, skin: "#8d5a3b", hair: C.out },
+  { x: 62, shirt: C.green, skin: "#f2c9a0", hair: C.yellow },
+  { x: 22, shirt: "#9b6fd0", skin: "#e0b088", hair: "#8a4a2b" },
+  { x: 54, shirt: C.orange, skin: "#c68a5a", hair: C.out },
+  { x: 78, shirt: C.white, skin: "#8d5a3b", hair: "#3b2a22" },
+];
+
+/** The Golden Treat Award: a shiny pixel bone. */
+function GoldenBone({ x, y, scale = 2 }: { x: number; y: number; scale?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${scale})`} aria-label="Golden Treat Award">
+      {px(
+        [
+          [3, 2, 14, 4, C.out],
+          [0, 0, 5, 4, C.out], [0, 4, 5, 4, C.out], [15, 0, 5, 4, C.out], [15, 4, 5, 4, C.out],
+          [1, 1, 3, 3, C.yellow], [1, 4, 3, 3, C.yellow], [16, 1, 3, 3, C.yellow], [16, 4, 3, 3, C.yellow],
+          [4, 3, 12, 2, C.yellow],
+          [4, 4, 12, 1, C.orange],
+          [2, 1, 1, 1, C.white], [6, 3, 4, 1, C.white],
+        ],
+        "bone",
+      )}
+    </g>
+  );
+}
+
+function Bubble({ x, y, w, lines, tail = "left" }: { x: number; y: number; w: number; lines: string[]; tail?: "left" | "right" }) {
+  const h = 8 + lines.length * 9;
+  const tx = tail === "left" ? x + 10 : x + w - 16;
+  return (
+    <g aria-hidden="true">
+      {px(
+        [
+          [x - 1, y - 1, w + 2, h + 2, C.out],
+          [x, y, w, h, C.white],
+          [tx, y + h, 6, 2, C.out],
+          [tx + 1, y + h, 4, 1, C.white],
+          [tx + (tail === "left" ? 0 : 3), y + h + 2, 3, 2, C.out],
+        ],
+        "bub",
+      )}
+      {lines.map((l, i) => (
+        <text key={i} x={x + w / 2} y={y + 10 + i * 9} textAnchor="middle" className="cut-text cut-dark" style={{ fontSize: 7 }}>
+          {l}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+/** Small dust puffs where something lands. */
+function LandingDust({ x, y, delay }: { x: number; y: number; delay: number }) {
+  return (
+    <g fill="#e7b98a" aria-hidden="true">
+      <g className="cut-dust-l" style={{ animationDelay: `${delay}s` }}>
+        <rect x={x - 14} y={y - 4} width={10} height={5} />
+        <rect x={x - 22} y={y - 8} width={6} height={4} />
+      </g>
+      <g className="cut-dust-r" style={{ animationDelay: `${delay}s` }}>
+        <rect x={x + 18} y={y - 4} width={10} height={5} />
+        <rect x={x + 30} y={y - 8} width={6} height={4} />
+      </g>
+    </g>
+  );
+}
+
+/** Moves its children from (dx,dy) to their resting place. Reduced motion shows the resting place. */
+function Move({ dx = 0, dy = 0, ms, delay = 0, steps = 16, children }: { dx?: number; dy?: number; ms: number; delay?: number; steps?: number; children: ReactNode }) {
+  const style = { "--dx": `${dx}px`, "--dy": `${dy}px`, animationDuration: `${ms}ms`, animationDelay: `${delay}ms`, animationTimingFunction: `steps(${steps}, end)` } as CSSProperties;
+  return (
+    <g className="cut-move" style={style}>
+      {children}
+    </g>
+  );
+}
+/** Visible from `at` ms (shown immediately with reduced motion). */
+function From({ at, children }: { at: number; children: ReactNode }) {
+  return (
+    <g className="cut-from" style={{ animationDelay: `${at}ms` }}>
+      {children}
+    </g>
+  );
+}
+/** Visible until `at` ms (hidden with reduced motion, which shows end states). */
+function Until({ at, children }: { at: number; children: ReactNode }) {
+  return (
+    <g className="cut-until" style={{ animationDelay: `${at}ms` }}>
+      {children}
+    </g>
+  );
+}
+
+const ROCKET_DOOR: Px[] = [[9, 18, 6, 9, C.out], [10, 19, 4, 7, C.steelL]];
+const ROCKET_DOOR_OPEN: Px[] = [[9, 18, 6, 9, C.out], [10, 19, 4, 7, "#141c32"]];
+
+function MarsOutpostBit() {
+  const base = { condition: 100, greenhouseMode: "LOW" as const, cropProgress: 4, charge: 0.8, generation: 28 };
+  return (
+    <g aria-hidden="true">
+      <g transform="translate(14 74)">
+        <ModuleArt id="habitat" level={3} {...base} />
+      </g>
+      <g transform="translate(64 80) scale(0.85)">
+        <ModuleArt id="greenhouse" level={3} {...base} />
+      </g>
+      <g transform="translate(108 84) scale(0.75)">
+        <ModuleArt id="solar" level={3} {...base} />
+      </g>
+    </g>
+  );
+}
+
+const ENCOURAGE: Record<string, string[]> = {
+  "A+": ["Amazing engineering,", "Commander!"],
+  A: ["Brilliant work,", "Commander!"],
+  B: ["Great job! We made", "a strong outpost."],
+  C: ["We made it home!", "Let's aim higher next time."],
+  D: ["We made it home!", "Let's practise and try again."],
+};
+
+const HOME_ROOM: Px[] = [
+  [0, 0, W, 130, "#5b3a4a"],
+  [0, 0, W, 8, "#4a2e3c"],
+  [0, 130, W, 50, "#8a5a3b"],
+  [0, 130, W, 3, "#6b4430"],
+  ...Array.from({ length: 8 }, (_, i) => [i * 42, 133, 1, 47, "#7a4e33"] as Px),
+  // window with a night sky and the Moon
+  [196, 22, 80, 64, C.out],
+  [200, 26, 72, 56, "#1c2440"],
+  [235, 26, 2, 56, C.out],
+  [200, 53, 72, 2, C.out],
+  ...disc(256, 40, 7, C.cream),
+  [210, 32, 1, 1, C.cream], [222, 66, 1, 1, C.yellow], [248, 70, 1, 1, C.cream], [214, 72, 1, 1, C.cream],
+  // warm lamp glow
+  [36, 30, 22, 14, C.yellow],
+  [40, 44, 14, 3, C.orange],
+  [46, 47, 2, 40, C.out],
+  [38, 86, 18, 4, C.out],
+  // shelf with the Golden Treat Award
+  [118, 58, 54, 4, "#6b4430"],
+  [120, 62, 3, 6, "#6b4430"], [167, 62, 3, 6, "#6b4430"],
+  // sofa with the family in the background
+  [22, 92, 92, 24, "#3f6aa8"],
+  [18, 86, 100, 10, "#2f528a"],
+  [18, 96, 8, 22, "#2f528a"], [110, 96, 8, 22, "#2f528a"],
+  // dog bed and food bowl
+  [134, 150, 74, 20, C.out],
+  [135, 151, 72, 18, C.red],
+  [131, 158, 4, 10, C.out], [207, 158, 4, 10, C.out],
+  [132, 159, 3, 8, C.red], [207, 159, 3, 8, C.red],
+  [139, 156, 64, 10, C.cream],
+  [139, 165, 64, 2, "#e7d4b0"],
+  [135, 167, 72, 2, "#b33a30"],
+  [236, 158, 22, 8, C.out],
+  [237, 159, 20, 6, C.blue],
+  [240, 157, 14, 3, "#8a4a2b"],
+];
+
 function outroScenes(state: MissionState): Scene[] {
+  // The result is final: the score is only read here, never recalculated or changed.
   const score = computeScore(state);
-  const gear = earnedGear(state.sol, true);
+  const grade = gradeFor(score.total);
   const tier = state.status === "outstanding" ? "outstanding" : "success";
+  const ROCKET_X = 230;
+  const ROCKET_Y = 54;
+  const rocket = (open = false, flame = false) => (
+    <g transform={`translate(${ROCKET_X} ${ROCKET_Y}) scale(1.7)`}>
+      {px(ROCKET, "r")}
+      {px(open ? ROCKET_DOOR_OPEN : ROCKET_DOOR, "d")}
+      {flame && <g className="blink">{px(FLAME, "f")}</g>}
+    </g>
+  );
   return [
+    // 1. Mission complete: a rocket comes down near the outpost; Laika notices it.
     {
-      ms: 2500,
-      caption: "Mission complete! The outpost is ready for the crew.",
+      ms: 4000,
+      caption: "Sol 10 is done! Look, a rocket is coming down...",
+      sound: [["whoosh", 200], ["boom", 2400]],
       art: (
         <g>
           <MarsBackdrop weather="CLEAR" />
-          <Laika x={136} y={104} scale={1.9} mood="celebrate" gear={gear} className="laika-hop" />
-          <Text x={160} y={64} size={20} fill={C.yellow}>
-            MISSION COMPLETE!
-          </Text>
+          <MarsOutpostBit />
+          <Move dy={-170} ms={2400} steps={24}>
+            {rocket(false, false)}
+          </Move>
+          <LandingDust x={ROCKET_X + 20} y={124} delay={2.4} />
+          <Until at={2500}>
+            <Laika x={150} y={102} scale={1.7} mood="idle" />
+          </Until>
+          <From at={2500}>
+            <Laika x={150} y={102} scale={1.7} mood="alert" />
+          </From>
         </g>
       ),
     },
+    // 2. The hatch opens and an astronaut steps out: "Laika!"
     {
-      ms: 3000,
-      caption: "Time to go home. Woof!",
-      sound: [["woof", 300], ["whoosh", 2200]],
+      ms: 3500,
+      caption: "The hatch opens. An astronaut steps out...",
+      sound: [["voice", 1300], ["woof", 1900]],
       art: (
         <g>
           <MarsBackdrop weather="CLEAR" />
-          <g transform="translate(206 76) scale(2)">{px(ROCKET, "r")}</g>
-          <g className="cut-board">
-            <Laika x={70} y={112} scale={1.6} mood="happy" gear={gear} className="laika-hop" />
-          </g>
+          <MarsOutpostBit />
+          <Until at={300}>{rocket(false)}</Until>
+          <From at={300}>{rocket(true)}</From>
+          <From at={500}>
+            <Move dx={22} dy={-18} ms={700} delay={500} steps={7}>
+              <Astronaut x={222} y={88} />
+            </Move>
+          </From>
+          <From at={1300}>
+            <Bubble x={196} y={60} w={50} lines={["Laika!"]} tail="right" />
+          </From>
+          <Until at={1800}>
+            <Laika x={150} y={102} scale={1.7} mood="alert" />
+          </Until>
+          <From at={1800}>
+            <Laika x={150} y={102} scale={1.7} mood="celebrate" className="laika-hop" />
+          </From>
         </g>
       ),
     },
+    // 3. Laika runs to the astronaut, who kneels down: "You made it, Laika. Good job!"
+    {
+      ms: 4500,
+      caption: "“You made it, Laika. Good job!”",
+      sound: [["voice", 1700], ["woof", 2300], ["woof", 2800]],
+      art: (
+        <g>
+          <MarsBackdrop weather="CLEAR" />
+          <MarsOutpostBit />
+          {rocket(true)}
+          <Until at={1300}>
+            <Astronaut x={222} y={88} />
+          </Until>
+          <From at={1300}>
+            <Astronaut x={222} y={88} pose="kneel" />
+          </From>
+          <Until at={1400}>
+            <Move dx={-60} ms={1400} steps={14}>
+              <g transform="translate(184 106) scale(1.6)">
+                <g className="laika-run">
+                  <LaikaFrames mood="happy" walking />
+                </g>
+              </g>
+            </Move>
+          </Until>
+          <From at={1400}>
+            <Laika x={184} y={106} scale={1.6} mood="celebrate" className="laika-hop" />
+          </From>
+          <From at={1700}>
+            <Bubble x={150} y={44} w={110} lines={["You made it, Laika.", "Good job!"]} tail="right" />
+          </From>
+        </g>
+      ),
+    },
+    // 4. Together they walk into the rocket, the hatch closes and it lifts off.
+    {
+      ms: 4000,
+      caption: "Together they board the rocket... and lift off for home!",
+      sound: [["woof", 300], ["whoosh", 2400]],
+      art: (
+        <g>
+          <MarsBackdrop weather="CLEAR" />
+          <MarsOutpostBit />
+          <Until at={2400}>
+            <Until at={1500}>{rocket(true)}</Until>
+            <From at={1500}>{rocket(false)}</From>
+          </Until>
+          <From at={2400}>
+            <g className="cut-launch">{rocket(false, true)}</g>
+          </From>
+          <Until at={1400}>
+            <Move dx={-30} ms={1400} steps={14}>
+              <Astronaut x={232} y={88} pose="walk" />
+            </Move>
+            <Move dx={-56} ms={1400} steps={14}>
+              <g transform="translate(206 106) scale(1.6)">
+                <LaikaFrames mood="happy" walking />
+              </g>
+            </Move>
+          </Until>
+        </g>
+      ),
+    },
+    // 5. Flying back to Earth; the real score categories appear one by one.
     {
       ms: 6000,
       caption: "Flying back to Earth... How did the mission go?",
+      sound: score.categories.map((_, i) => ["pop", 600 + i * 750] as [SoundName, number]),
       art: (
         <g>
           {px(SPACE, "sp")}
@@ -380,17 +751,17 @@ function outroScenes(state: MissionState): Scene[] {
               <g className="blink">{px(FLAME, "f")}</g>
             </g>
           </g>
-          <rect x={8} y={8} width={150} height={96} fill={C.out} />
-          <rect x={9} y={9} width={148} height={94} fill={C.navy} />
-          <Text x={83} y={21} size={8} fill={C.yellow}>
+          <rect x={8} y={8} width={164} height={96} fill={C.out} />
+          <rect x={9} y={9} width={162} height={94} fill={C.navy} />
+          <Text x={90} y={21} size={8} fill={C.yellow}>
             MISSION REPORT
           </Text>
           {score.categories.map((c, i) => (
-            <g key={c.id} className="cut-pop" style={{ animationDelay: `${0.5 + i * 0.8}s` }} data-outro-category={c.id}>
+            <g key={c.id} className="cut-pop" style={{ animationDelay: `${0.6 + i * 0.75}s` }} data-outro-category={c.id}>
               <text x={14} y={35 + i * 12} className="cut-text" style={{ fontSize: 6.5 }}>
                 {c.label}
               </text>
-              <text x={152} y={35 + i * 12} textAnchor="end" className="cut-text" style={{ fontSize: 6.5, fill: C.yellow }}>
+              <text x={166} y={35 + i * 12} textAnchor="end" className="cut-text" style={{ fontSize: 6.5, fill: C.yellow }}>
                 {c.score}/{c.max}
               </text>
             </g>
@@ -398,37 +769,233 @@ function outroScenes(state: MissionState): Scene[] {
         </g>
       ),
     },
+    // 6. FINAL MISSION GRADE: a pause, a rising sound, then the real grade.
     {
-      ms: 3200,
+      ms: 4500,
       caption: ENDING_TEXT[tier].title,
-      sound: [["gear", 1100]],
+      sound: [["rise", 500], ["pop", 1800], ["woof", 2500]],
       art: (
         <g>
           {px(SPACE, "sp")}
           {px(earth(160, 250, 110), "e")}
-          <Text x={160} y={44} size={12}>
-            FINAL SCORE
+          <Text x={160} y={30} size={11}>
+            FINAL MISSION GRADE
           </Text>
-          <g className="cut-pop" style={{ animationDelay: "1.1s" }} data-testid="outro-grade">
-            <Text x={160} y={96} size={50} fill={C.yellow}>
-              {String(score.total)}
+          <Until at={1800}>
+            <rect x={136} y={40} width={48} height={44} fill={C.out} />
+            <rect x={138} y={42} width={44} height={40} fill={C.navy} />
+            <Text x={160} y={74} size={30} fill={C.steel} className="blink">
+              ?
             </Text>
-            <Text x={160} y={122} size={16}>
-              {`GRADE ${gradeFor(score.total)}`}
+          </Until>
+          <From at={1800}>
+            <g data-testid="outro-grade" data-grade={grade} data-score={score.total}>
+              <Text x={160} y={78} size={44} fill={C.yellow}>
+                {grade}
+              </Text>
+              <Text x={160} y={96} size={10}>
+                {`SCORE ${score.total} / 100`}
+              </Text>
+            </g>
+          </From>
+          <From at={2400}>
+            <Laika x={66} y={112} scale={1.5} mood="celebrate" className="laika-hop" />
+            <Bubble x={20} y={84} w={124} lines={ENCOURAGE[grade] ?? ENCOURAGE.C} />
+          </From>
+        </g>
+      ),
+    },
+    // 7. Landing on Earth: a small crowd is waiting and cheering.
+    {
+      ms: 4500,
+      caption: "Welcome home! A crowd is waiting for Laika.",
+      sound: [["boom", 1800], ["cheer", 2300], ["woof", 2700]],
+      art: (
+        <g>
+          {px(EARTH_LAND, "el")}
+          <Move dy={-170} ms={1800} steps={18}>
+            <g transform="translate(220 54) scale(1.7)">
+              <Until at={2000}>{px([...ROCKET, ...ROCKET_DOOR], "r1")}</Until>
+              <From at={2000}>{px([...ROCKET, ...ROCKET_DOOR_OPEN], "r2")}</From>
+            </g>
+          </Move>
+          <LandingDust x={240} y={124} delay={1.8} />
+          {CROWD.map((p, i) => (
+            <Person key={i} x={p.x} y={i > 3 ? 104 : 110} shirt={p.shirt} skin={p.skin} hair={p.hair} delay={i * 0.11} />
+          ))}
+          <From at={2200}>
+            <Move dx={40} dy={-12} ms={900} delay={2200} steps={9}>
+              <Laika x={160} y={106} scale={1.6} mood="celebrate" className="laika-hop" />
+            </Move>
+          </From>
+        </g>
+      ),
+    },
+    // 8. The Golden Treat Award.
+    {
+      ms: 3500,
+      caption: "For her courage, Laika gets the Golden Treat Award!",
+      sound: [["sparkle", 400], ["woof", 900], ["cheer", 1200]],
+      art: (
+        <g>
+          {px(EARTH_LAND, "el")}
+          <g transform="translate(220 54) scale(1.7)">{px([...ROCKET, ...ROCKET_DOOR_OPEN], "r")}</g>
+          {CROWD.map((p, i) => (
+            <Person key={i} x={p.x} y={i > 3 ? 104 : 110} shirt={p.shirt} skin={p.skin} hair={p.hair} delay={i * 0.11} />
+          ))}
+          <Laika x={140} y={106} scale={1.6} mood="celebrate" className="laika-hop" />
+          <From at={400}>
+            <g className="cut-shine">
+              <GoldenBone x={138} y={70} scale={2} />
+            </g>
+            <g fill={C.yellow} className="blink">
+              <rect x={132} y={64} width={2} height={2} />
+              <rect x={184} y={66} width={2} height={2} />
+              <rect x={160} y={58} width={2} height={2} />
+              <rect x={128} y={86} width={2} height={2} />
+            </g>
+          </From>
+        </g>
+      ),
+    },
+    // 9. Home at last: Laika asleep in her bed, with her family nearby.
+    {
+      ms: 4500,
+      caption: "In our story, Laika finally has a home and a family who love her.",
+      art: (
+        <g>
+          {px(HOME_ROOM, "room")}
+          <Person x={36} y={84} shirt={C.blue} skin="#f2c9a0" hair="#6b3a1e" cheer={false} />
+          <Person x={58} y={90} shirt={C.green} skin="#c68a5a" hair={C.out} cheer={false} />
+          <Person x={82} y={84} shirt={C.red} skin="#8d5a3b" hair={C.out} cheer={false} />
+          <GoldenBone x={126} y={48} scale={1} />
+          <g transform="translate(147 141) scale(1.6)">
+            <g className="cut-breathe">{gridRects(outlined(LAIKA_SLEEP), "sleep")}</g>
+          </g>
+          <g className="cut-zzz" aria-hidden="true">
+            <Text x={150} y={130} size={9} fill={C.cream}>
+              z
+            </Text>
+            <Text x={158} y={120} size={11} fill={C.cream}>
+              Z
             </Text>
           </g>
         </g>
       ),
     },
+    // 10. In Loving Memory of Laika (the real photograph). No music.
     {
-      ms: 3000,
-      caption: "Welcome home, Laika! (In our story, she makes it back.)",
-      sound: [["woof", 600]],
+      ms: MEMORIAL_MS,
+      caption: "",
+      silence: true,
+      black: true,
+      html: <MemorialScene />,
+      art: <g />,
+    },
+  ];
+}
+
+// ---------- the memorial (moved here from the start of the game) ----------
+const MEMORIAL_MS = 5000;
+function MemorialScene() {
+  const [shown, setShown] = useState(0);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setShown(MEMORIAL_TEXT.length); // reduced motion: the whole line at once
+      return;
+    }
+    let k = 0;
+    let iv = 0;
+    const start = window.setTimeout(() => {
+      iv = window.setInterval(() => {
+        k += 1;
+        setShown(k);
+        // A soft tick on every other letter keeps it quiet.
+        if (MEMORIAL_TEXT[k - 1] !== " " && k % 2 === 1) playSound("type");
+        if (k >= MEMORIAL_TEXT.length) window.clearInterval(iv);
+      }, 85);
+    }, 900);
+    return () => {
+      window.clearTimeout(start);
+      window.clearInterval(iv);
+    };
+  }, []);
+  const photo = failed ? null : MEMORIAL_PHOTO;
+  return (
+    <div className="memorial-scene" data-testid="memorial" role="img" aria-label={MEMORIAL_TEXT}>
+      {photo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo.src} alt={photo.alt} className="memorial-photo" onError={() => setFailed(true)} />
+      )}
+      <p className="memorial-text" aria-hidden="true" data-testid="memorial-text">
+        {MEMORIAL_TEXT.slice(0, shown)}
+        <span className="type-caret">{shown < MEMORIAL_TEXT.length ? "_" : ""}</span>
+      </p>
+    </div>
+  );
+}
+
+// ---------- failure: a short, gentle sad scene before the report ----------
+function failureScenes(state: MissionState): Scene[] {
+  const early = state.status === "failure";
+  return [
+    {
+      ms: 2200,
+      caption: early ? "The mission ended early. Laika is flown up to the safe orbiting ship." : "Sol 10 is over, but the base is not ready for the crew yet.",
+      silence: true,
       art: (
         <g>
-          {px(EARTH_LAND, "el")}
-          <g transform="translate(200 62) scale(1.8)">{px(ROCKET, "r")}</g>
-          <Laika x={110} y={114} scale={1.8} mood="celebrate" gear={gear} className="laika-hop" />
+          <MarsBackdrop weather="CLEAR" />
+          <MarsOutpostBit />
+          <Until at={1100}>
+            <Laika x={150} y={102} scale={1.7} mood="idle" />
+          </Until>
+          <From at={1100}>
+            <Laika x={150} y={102} scale={1.7} mood="concerned" />
+          </From>
+          <rect x={0} y={0} width={W} height={H} fill="#0b1020" className="cut-darken" />
+        </g>
+      ),
+    },
+    {
+      ms: 3000,
+      caption: "Laika is sad... but she is safe.",
+      silence: true,
+      sound: [["whine", 700]],
+      art: (
+        <g>
+          <rect x={0} y={0} width={W} height={H} fill="#141c32" />
+          {px(disc(160, 96, 70, "#1c2440"), "glow")}
+          <g className="cut-head-down">
+            <g transform="translate(97 30) scale(5)">
+              <g className="laika-still">
+                <LaikaFrames mood="concerned" />
+              </g>
+            </g>
+          </g>
+          <g className="cut-tear" fill={C.water}>
+            <rect x={136} y={78} width={4} height={6} />
+            <rect x={137} y={84} width={2} height={2} />
+          </g>
+        </g>
+      ),
+    },
+    {
+      ms: 2000,
+      caption: "Every mission teaches us something. Let's try again.",
+      silence: true,
+      art: (
+        <g>
+          <rect x={0} y={0} width={W} height={H} fill="#0b1020" />
+          <Laika x={142} y={44} scale={1.4} mood="resting" />
+          <Text x={160} y={112} size={10} fill={C.cream}>
+            Every mission teaches us something.
+          </Text>
+          <Text x={160} y={128} size={10} fill={C.yellow}>
+            {"Let's try again."}
+          </Text>
         </g>
       ),
     },
@@ -449,6 +1016,7 @@ function CutscenePlayer({ scenes, title, skipLabel, onDone }: PlayerProps) {
   const finish = useCallback(() => {
     if (finished.current) return; // skip + timer can never both fire onDone
     finished.current = true;
+    stopAllSfx(); // skipping silences any whimper, bark or tick still playing
     onDone();
   }, [onDone]);
 
@@ -468,9 +1036,15 @@ function CutscenePlayer({ scenes, title, skipLabel, onDone }: PlayerProps) {
   }, [index, scenes, finish]);
 
   const next = () => (index + 1 >= scenes.length ? finish() : setIndex(index + 1));
+  // Sad scenes and the memorial have no background music.
+  const silent = !!scene.silence;
+  useEffect(() => {
+    setMusicSilenced("cutscene", silent);
+  }, [silent]);
+  useEffect(() => () => setMusicSilenced("cutscene", false), []);
 
   return (
-    <main className="cutscene" aria-label={title} data-testid="cutscene" data-scene={index}>
+    <main className="cutscene" aria-label={title} data-testid="cutscene" data-scene={index} data-black={scene.black ? "true" : undefined}>
       <div className="cutscene-inner">
         <div className="flex items-center justify-between gap-2">
           <span className="flex gap-1" aria-hidden="true">
@@ -482,6 +1056,11 @@ function CutscenePlayer({ scenes, title, skipLabel, onDone }: PlayerProps) {
             {skipLabel}
           </button>
         </div>
+        {scene.html ? (
+          <div key={index} className="cutscene-html">
+            {scene.html}
+          </div>
+        ) : (
         <div className="outpost-frame">
           <svg key={index} viewBox={`0 0 ${W} ${H}`} className="outpost-svg cut-scene" shapeRendering="crispEdges" role="img" aria-label={scene.caption}>
             <defs>
@@ -492,8 +1071,9 @@ function CutscenePlayer({ scenes, title, skipLabel, onDone }: PlayerProps) {
             {scene.art}
           </svg>
         </div>
-        <div className="panel-dark flex items-center justify-between gap-3 px-3 py-2">
-          <p className="text-[15px] font-bold" aria-live="polite" data-testid="cutscene-caption">
+        )}
+        <div className="panel-dark flex items-center justify-between gap-3 px-3 py-2" hidden={scene.black}>
+          <p className="text-[length:calc(15px*var(--ts))] font-bold" aria-live="polite" data-testid="cutscene-caption">
             {scene.caption}
           </p>
           <button type="button" className="btn btn-small" onClick={next} aria-label="Next scene">
@@ -517,4 +1097,12 @@ export function OutroCutscene({ state, onDone }: { state: MissionState; onDone: 
   return <CutscenePlayer scenes={scenes} title="Mission complete story" skipLabel="Skip Outro" onDone={onDone} />;
 }
 
+/** Short, gentle sad scene for an unsuccessful mission; leads into the full report. */
+export function FailureCutscene({ state, onDone }: { state: MissionState; onDone: () => void }) {
+  const scenes = useRef(failureScenes(state)).current;
+  return <CutscenePlayer scenes={scenes} title="Mission ended story" skipLabel="Skip Cutscene" onDone={onDone} />;
+}
+
 export const INTRO_TOTAL_MS = introScenes().reduce((sum, s) => sum + s.ms, 0);
+export const outroTotalMs = (state: MissionState) => outroScenes(state).reduce((sum, s) => sum + s.ms, 0);
+export const failureTotalMs = (state: MissionState) => failureScenes(state).reduce((sum, s) => sum + s.ms, 0);

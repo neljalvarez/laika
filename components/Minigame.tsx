@@ -53,7 +53,7 @@ function DustGame({ onDone }: { onDone: (won: boolean) => void }) {
   }, [time, left.length, onDone]);
   return (
     <div>
-      <p className="mb-1 text-[13px] font-bold" aria-live="polite">
+      <p className="mb-1 text-[length:calc(13px*var(--ts))] font-bold" aria-live="polite">
         Clouds left: {left.length} · Time: {time}s
       </p>
       <div className="minigame-field" style={{ height: 180 }}>
@@ -125,7 +125,7 @@ function BoltGame({ onDone }: { onDone: (won: boolean) => void }) {
   };
   return (
     <div>
-      <p className="mb-1 text-[13px] font-bold" aria-live="polite">
+      <p className="mb-1 text-[length:calc(13px*var(--ts))] font-bold" aria-live="polite">
         Hits: {hits}/3 · Misses: {misses}/3
       </p>
       <div className="minigame-field" style={{ height: 48 }} aria-hidden="true">
@@ -190,7 +190,7 @@ function WireGame({ seed, onDone }: { seed: number; onDone: (won: boolean) => vo
   };
   return (
     <div>
-      <p className="mb-1 text-[13px] font-bold" aria-live="polite">
+      <p className="mb-1 text-[length:calc(13px*var(--ts))] font-bold" aria-live="polite">
         {ready ? `Your turn: ${input.length}/${seq.length}` : `Watch: light ${Math.min(showing + 1, seq.length)} of ${seq.length}`}
         {!ready && lit !== null && <span className="sr-only"> {LIGHTS[lit].name}</span>}
       </p>
@@ -213,7 +213,7 @@ function WireGame({ seed, onDone }: { seed: number; onDone: (won: boolean) => vo
               boxShadow: lit === i ? "0 0 0 4px #FFF1D0" : undefined,
               cursor: ready ? "pointer" : "default",
               color: "#2a1a22",
-              fontSize: 13,
+              fontSize: "calc(13px * var(--ts))",
             }}
           >
             {l.name}
@@ -269,8 +269,8 @@ export function Minigame({ moduleId, kind, seed, onFinish, onCancel }: Props) {
       }
     >
       <div data-testid="minigame" data-game={game}>
-        <h2 className="h-pixel text-[16px]">{TITLES[game].title}</h2>
-        <p className="mb-2 text-[13px]">
+        <h2 className="h-pixel text-[length:calc(16px*var(--ts))]">{TITLES[game].title}</h2>
+        <p className="mb-2 text-[length:calc(13px*var(--ts))]">
           {TITLES[game].how} Win for <strong>+{CONFIG.minigameBonus} condition</strong>. Skip for the normal result.
         </p>
         {result === "playing" && !started && (
@@ -283,7 +283,7 @@ export function Minigame({ moduleId, kind, seed, onFinish, onCancel }: Props) {
         {result === "playing" && started && game === "wires" && <WireGame seed={seed} onDone={done} />}
         {result !== "playing" && (
           <p
-            className="border-[3px] border-ink p-2 text-[15px] font-bold"
+            className="border-[3px] border-ink p-2 text-[length:calc(15px*var(--ts))] font-bold"
             role="status"
             style={{ background: result === "won" ? "#81C995" : "#F2CA76" }}
             data-testid="minigame-result"

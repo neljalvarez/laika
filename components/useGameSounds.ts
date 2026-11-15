@@ -87,9 +87,8 @@ export function useGameSounds(mission: MissionState | null): void {
       return;
     }
 
-    const built = mission.metrics.upgradesBuilt + mission.metrics.repairsDone;
-    const builtBefore = before.metrics.upgradesBuilt + before.metrics.repairsDone;
-    if (built > builtBefore) playSound("upgrade", 60);
+    // Upgrades get their "POOSH!" when Laika reaches the building (PixelMarsOutpost); repairs keep the jingle.
+    if (mission.metrics.repairsDone > before.metrics.repairsDone) playSound("upgrade", 60);
 
     // A rejected action sets a notice; viewing a disabled button never does.
     if (mission.notice && mission.notice !== before.notice) playSound("error", 40);

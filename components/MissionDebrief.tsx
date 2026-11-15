@@ -43,27 +43,27 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
             <LaikaSprite mood={laika.mood} scale={5} motion={laika.mood === "celebrate" ? "laika-hop-brief" : undefined} gear={gear} />
           </div>
           <div className="flex-1">
-            <h1 className="h-pixel text-[26px] leading-tight">{ending.title}</h1>
+            <h1 className="h-pixel text-[length:calc(26px*var(--ts))] leading-tight">{ending.title}</h1>
             <p>{ending.body}</p>
             {state.failureReason && (
-              <p className="mt-2 border-[3px] border-ink bg-white p-2 text-[14px]" role="status">
+              <p className="mt-2 border-[3px] border-ink bg-white p-2 text-[length:calc(14px*var(--ts))]" role="status">
                 <strong>Why the mission ended:</strong> {state.failureReason}
               </p>
             )}
-            <p className="mt-2 text-[14px]">
+            <p className="mt-2 text-[length:calc(14px*var(--ts))]">
               <strong>Laika:</strong> “{laika.text}”
             </p>
           </div>
           <div className="panel-dark px-5 py-3 text-center">
-            <div className="text-[12px] font-extrabold uppercase tracking-wide">Total score</div>
-            <div className="text-[40px] font-extrabold leading-none tabular-nums" data-testid="total-score">
+            <div className="text-[length:calc(12px*var(--ts))] font-extrabold uppercase tracking-wide">Total score</div>
+            <div className="text-[length:calc(40px*var(--ts))] font-extrabold leading-none tabular-nums" data-testid="total-score">
               {score.total}
             </div>
-            <div className="text-[14px] font-extrabold">out of 100</div>
-            <div className="text-[18px] font-extrabold text-gold" data-testid="debrief-grade">
+            <div className="text-[length:calc(14px*var(--ts))] font-extrabold">out of 100</div>
+            <div className="text-[length:calc(18px*var(--ts))] font-extrabold text-gold" data-testid="debrief-grade">
               Grade {gradeFor(score.total)}
             </div>
-            <div className="mt-1 text-[11px] font-extrabold uppercase" data-testid="debrief-difficulty">
+            <div className="mt-1 text-[length:calc(11px*var(--ts))] font-extrabold uppercase" data-testid="debrief-difficulty">
               {difficultyOf(state).label} mode
             </div>
           </div>
@@ -76,7 +76,7 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
           <ul className="space-y-2 p-3">
             {score.categories.map((c) => (
               <li key={c.id}>
-                <div className="flex items-baseline justify-between gap-2 text-[14px] font-extrabold uppercase">
+                <div className="flex items-baseline justify-between gap-2 text-[length:calc(14px*var(--ts))] font-extrabold uppercase">
                   <span>{c.label}</span>
                   <span className="tabular-nums">
                     {c.score} / {c.max}
@@ -85,11 +85,11 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
                 <div className="h-[12px] border-[2px] border-ink bg-white" aria-hidden="true">
                   <div style={{ width: `${(c.score / c.max) * 100}%`, height: "100%", background: "#2f6fd0" }} />
                 </div>
-                <div className="text-[12px]">{c.explanation}</div>
+                <div className="text-[length:calc(12px*var(--ts))]">{c.explanation}</div>
               </li>
             ))}
           </ul>
-          <p className="border-t-[3px] border-ink p-3 text-[12px]">
+          <p className="border-t-[3px] border-ink p-3 text-[length:calc(12px*var(--ts))]">
             {score.progress < 1
               ? `The mission ended after ${solsDone} of ${state.maxSols} sols, so every category is scaled by ${solsDone}/${state.maxSols}. `
               : ""}
@@ -103,45 +103,45 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
 
         <section className="panel">
           <div className="panel-title">What you learned</div>
-          <div className="space-y-2 p-3 text-[14px]" data-testid="debrief-learning">
+          <div className="space-y-2 p-3 text-[length:calc(14px*var(--ts))]" data-testid="debrief-learning">
             <div className="border-[3px] border-ink bg-white p-2">
-              <div className="h-pixel text-[12px]">
+              <div className="h-pixel text-[length:calc(12px*var(--ts))]">
                 <span className="tag tag-ok">★</span> Your best decision
               </div>
               {best ? (
                 <>
                   <p className="font-bold">{best.title}</p>
-                  {best.text && <p className="text-[13px]">{best.text}</p>}
+                  {best.text && <p className="text-[length:calc(13px*var(--ts))]">{best.text}</p>}
                 </>
               ) : (
-                <p className="text-[13px]">No single decision stood out. Try making a big choice early next time.</p>
+                <p className="text-[length:calc(13px*var(--ts))]">No single decision stood out. Try making a big choice early next time.</p>
               )}
             </div>
             <div className="border-[3px] border-ink bg-white p-2">
-              <div className="h-pixel text-[12px]">
+              <div className="h-pixel text-[length:calc(12px*var(--ts))]">
                 <span className="tag tag-warn">▲</span> What to improve
               </div>
               {improve ? (
                 <>
                   <p className="font-bold">{improve.title}</p>
-                  <p className="text-[13px]">{improve.text}</p>
+                  <p className="text-[length:calc(13px*var(--ts))]">{improve.text}</p>
                 </>
               ) : (
-                <p className="text-[13px]">Every area scored well. Try a different build order and compare!</p>
+                <p className="text-[length:calc(13px*var(--ts))]">Every area scored well. Try a different build order and compare!</p>
               )}
             </div>
             <div className="border-[3px] border-ink bg-white p-2">
-              <div className="h-pixel text-[12px]">
+              <div className="h-pixel text-[length:calc(12px*var(--ts))]">
                 <span className="tag" style={{ background: "#6fb1f5" }}>💡</span> Engineering lesson: {lesson.title}
               </div>
-              <p className="text-[13px]">{lesson.text}</p>
+              <p className="text-[length:calc(13px*var(--ts))]">{lesson.text}</p>
             </div>
-            <p className="text-[13px]">
+            <p className="text-[length:calc(13px*var(--ts))]">
               <strong>Daily missions:</strong> {state.missionsDone.length} of {missionsOffered} completed ·{" "}
               <strong>Insights found:</strong> {state.insights.length} · <strong>Gears:</strong> {state.gears}
             </p>
             {gear.length > 0 && (
-              <p className="text-[13px]" data-testid="debrief-gear">
+              <p className="text-[length:calc(13px*var(--ts))]" data-testid="debrief-gear">
                 <strong>Laika&apos;s outfit:</strong> {gear.map((g) => g.name).join(", ")}
               </p>
             )}
@@ -149,7 +149,7 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
           <div className="panel-title" style={{ borderTop: "3px solid #2a1a22" }}>
             Final outpost
           </div>
-          <table className="report m-3" style={{ width: "calc(100% - 24px)", fontSize: 13 }}>
+          <table className="report m-3" style={{ width: "calc(100% - 24px)", fontSize: "calc(13px * var(--ts))" }}>
             <thead>
               <tr>
                 <th scope="col">Module</th>
@@ -173,9 +173,9 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
           <div className="panel-title">Major decisions</div>
           <div className="p-3">
             {state.decisions.length === 0 ? (
-              <p className="text-[14px]">No emergency decisions were needed.</p>
+              <p className="text-[length:calc(14px*var(--ts))]">No emergency decisions were needed.</p>
             ) : (
-              <ol className="space-y-1 text-[13px]">
+              <ol className="space-y-1 text-[length:calc(13px*var(--ts))]">
                 {state.decisions.map((d, i) => (
                   <li key={i} className="flex flex-wrap items-center gap-2 border-[2px] border-ink bg-white p-1">
                     <span className="tag" style={{ background: "#27334C", color: "#FFF1D0" }}>
@@ -196,10 +196,10 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
 
         <section className="panel">
           <div className="panel-title">Sol by sol</div>
-          <details className="p-3 pb-0 text-[13px]">
+          <details className="p-3 pb-0 text-[length:calc(13px*var(--ts))]">
             <summary className="cursor-pointer font-bold">Show every sol</summary>
           <div className="scroll-y pb-3" style={{ maxHeight: 300 }} tabIndex={0} aria-label="Sol by sol resource table">
-            <table className="report" style={{ fontSize: 12 }}>
+            <table className="report" style={{ fontSize: "calc(12px * var(--ts))" }}>
               <thead>
                 <tr>
                   <th scope="col">Sol</th>
@@ -232,7 +232,7 @@ export function MissionDebrief({ state, onPlayAgain, onMenu }: Props) {
 
       <section className="panel">
         <div className="panel-title">Full mission log</div>
-        <details className="p-3 text-[13px]">
+        <details className="p-3 text-[length:calc(13px*var(--ts))]">
           <summary className="cursor-pointer font-bold">Show the full log</summary>
           <MissionLogList log={state.log} maxHeight={260} compact />
         </details>

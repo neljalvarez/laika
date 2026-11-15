@@ -78,7 +78,7 @@ export function Modal({ title, children, onClose, maxWidth = 720, footer, tone =
           )}
         </div>
         {tone === "alert" && <div className="alert-stripes" aria-hidden="true" />}
-        <div className="p-3 sm:p-4">{children}</div>
+        <div className="modal-body scroll-y p-3 sm:p-4">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t-[3px] border-ink p-3">{footer}</div>}
       </div>
     </div>
