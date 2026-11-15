@@ -1,5 +1,6 @@
 "use client";
 
+import { SIMPLE, useSimple } from "@/data/simple";
 import type { Dispatch } from "react";
 import { EVENTS } from "@/data/events";
 import { canAfford } from "@/game/events";
@@ -22,6 +23,7 @@ function costTags(choice: EventChoice): string[] {
 }
 
 export function MissionEventModal({ state, dispatch }: { state: MissionState; dispatch: Dispatch<GameAction> }) {
+  const simple = useSimple();
   if (!state.pendingEvent) return null;
   const event = EVENTS[state.pendingEvent];
   return (
@@ -31,43 +33,45 @@ export function MissionEventModal({ state, dispatch }: { state: MissionState; di
           <PixelSprite grid={ICONS[event.icon]} scale={5} />
         </div>
         <div>
-          <h2 className="h-pixel text-[18px]">{event.title}</h2>
-          <p>{event.description}</p>
-          <p className="mt-1 text-[13px] font-bold">Pick one to continue.</p>
+          <h2 className="h-pixel text-[length:calc(18px*var(--ts))]">{event.title}</h2>
+          <p data-explain={simple ? "simple" : "detailed"}>{simple ? SIMPLE.events[event.id] : event.description}</p>
+          <p className="mt-1 text-[length:calc(13px*var(--ts))] font-bold">Pick one to continue.</p>
         </div>
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3" data-testid="event-choices">
         {event.choices.map((choice, i) => {
           const afford = canAfford(state, choice);
           return (
             <div key={choice.id} className="flex flex-col border-[3px] border-ink bg-white p-2">
-              <h3 className="h-pixel text-[14px]">
+              <h3 className="h-pixel text-[length:calc(14px*var(--ts))]">
                 {String.fromCharCode(65 + i)}. {choice.label}
               </h3>
               <div className="my-1 flex flex-wrap items-center gap-1">
-                <strong className="text-[13px]">Cost:</strong>
+                <strong className="text-[length:calc(13px*var(--ts))]">Cost:</strong>
                 {costTags(choice).map((t) => (
                   <span key={t} className={`tag ${t.startsWith("−") ? "tag-warn" : "tag-ok"}`}>
                     {t}
                   </span>
                 ))}
               </div>
-              <p className="text-[13px]">
+              <p className="text-[length:calc(13px*var(--ts))]">
                 <strong>Effect now:</strong> {choice.nearTerm}
               </p>
-              <p className="text-[13px]">
+              <p className="text-[length:calc(13px*var(--ts))]">
                 <strong>Later:</strong> {choice.future}
               </p>
-              <p className="mt-1 border-l-[4px] border-pixelblue pl-2 text-[12px]" data-testid="choice-idea">
-                <strong>Engineering idea:</strong> {choice.idea}
-              </p>
-              <details className="mb-2 text-[12px]">
+              {!simple && (
+                <p className="mt-1 border-l-[4px] border-pixelblue pl-2 text-[length:calc(12px*var(--ts))]" data-testid="choice-idea">
+                  <strong>Engineering idea:</strong> {choice.idea}
+                </p>
+              )}
+              <details className="mb-2 text-[length:calc(12px*var(--ts))]">
                 <summary className="cursor-pointer font-bold">What is this?</summary>
                 {choice.description}
               </details>
               <div className="mt-auto">
                 {!afford.ok && (
-                  <p className="mb-1 text-[12px] font-bold" role="note">
+                  <p className="mb-1 text-[length:calc(12px*var(--ts))] font-bold" role="note">
                     Not available: {afford.reason}
                   </p>
                 )}
@@ -104,24 +108,24 @@ export function EventOutcomeModal({ state, dispatch }: { state: MissionState; di
         </button>
       }
     >
-      <h2 className="h-pixel text-[16px]">{o.eventTitle}</h2>
+      <h2 className="h-pixel text-[length:calc(16px*var(--ts))]">{o.eventTitle}</h2>
       <p>
         You chose: <strong>{o.choiceLabel}</strong>
       </p>
       {o.after && (
-        <p className="mt-2 border-[3px] border-ink bg-gold p-2 text-[14px] font-bold" data-testid="outcome-after">
+        <p className="mt-2 border-[3px] border-ink bg-gold p-2 text-[length:calc(14px*var(--ts))] font-bold" data-testid="outcome-after">
           {o.after}
         </p>
       )}
       <div className="mt-2 font-extrabold uppercase">What changed</div>
-      <ul className="list-disc pl-5 text-[14px]">
+      <ul className="list-disc pl-5 text-[length:calc(14px*var(--ts))]">
         {o.changes.map((c) => (
           <li key={c}>{c}</li>
         ))}
       </ul>
       <div className="mt-2 border-[3px] border-ink bg-white p-2">
         <div className="font-extrabold uppercase">The science idea</div>
-        <p className="text-[14px]">{o.science}</p>
+        <p className="text-[length:calc(14px*var(--ts))]">{o.science}</p>
       </div>
     </Modal>
   );

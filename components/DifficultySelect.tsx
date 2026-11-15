@@ -47,13 +47,13 @@ export function DifficultySelect({ defaultTraining, savedSol, hasSave, onStart, 
               style={{ background: on ? "#F2CA76" : "#fff", boxShadow: on ? "inset 0 0 0 3px #2a1a22" : undefined }}
               onClick={() => setDifficulty(id)}
             >
-              <div className="h-pixel text-[16px]">
+              <div className="h-pixel text-[length:calc(16px*var(--ts))]">
                 {on ? "▶ " : ""}
                 {d.label}
               </div>
-              <div className="text-[12px] font-bold">{d.title}</div>
-              <div className="mt-1 text-[13px]">{d.blurb}</div>
-              <div className="mt-1 text-[12px]">
+              <div className="text-[length:calc(12px*var(--ts))] font-bold">{d.title}</div>
+              <div className="mt-1 text-[length:calc(13px*var(--ts))]">{d.blurb}</div>
+              <div className="mt-1 text-[length:calc(12px*var(--ts))]">
                 Start with {d.startMaterials} materials.
                 <br />
                 {d.deliveries.length > 0
@@ -64,12 +64,12 @@ export function DifficultySelect({ defaultTraining, savedSol, hasSave, onStart, 
           );
         })}
       </div>
-      <label className="mt-3 flex cursor-pointer items-center gap-2 text-[14px] font-bold">
+      <label className="mt-3 flex cursor-pointer items-center gap-2 text-[length:calc(14px*var(--ts))] font-bold">
         <input type="checkbox" checked={training} onChange={(e) => setTraining(e.target.checked)} style={{ width: 20, height: 20 }} />
         Play the training first (good for new players)
       </label>
       {hasSave && (
-        <p className="mt-2 border-[3px] border-ink bg-gold p-2 text-[13px] font-bold" role="note">
+        <p className="mt-2 border-[3px] border-ink bg-gold p-2 text-[length:calc(13px*var(--ts))] font-bold" role="note">
           This replaces your saved mission{savedSol ? ` (Sol ${savedSol})` : ""}.
         </p>
       )}

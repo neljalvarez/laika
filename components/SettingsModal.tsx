@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { musicStatus, playSound, unlockAudio, type AudioPrefKey } from "@/lib/sound";
 import { Modal } from "./Modal";
 import { useAudioPrefs, useAudioVolumes } from "./useGameSounds";
+import { setUiPref, TEXT_SIZE_LABEL, useUiPrefs, type ExplainStyle, type TextSize } from "@/lib/prefs";
 
 const AUDIO_ROWS: { key: AudioPrefKey; label: string; help: string }[] = [
   { key: "master", label: "Master volume", help: "Turns everything up or down." },
@@ -40,7 +41,7 @@ export function AudioSettings() {
             <div className="flex items-center justify-between gap-3">
               <label htmlFor={id} className="min-w-0">
                 <span className="block font-extrabold uppercase">{row.label}</span>
-                <span className="block text-[12px]">{row.help}</span>
+                <span className="block text-[length:calc(12px*var(--ts))]">{row.help}</span>
               </label>
               <button
                 type="button"
@@ -73,16 +74,93 @@ export function AudioSettings() {
                   if (row.key === "sfx" || row.key === "master") playSound("tutorial");
                 }}
               />
-              <output htmlFor={id} className="w-[44px] text-right text-[13px] font-extrabold tabular-nums" data-testid={`vol-${row.key}-value`}>
+              <output htmlFor={id} className="w-[44px] text-right text-[length:calc(13px*var(--ts))] font-extrabold tabular-nums" data-testid={`vol-${row.key}-value`}>
                 {volumes[row.key]}%
               </output>
             </div>
           </div>
         );
       })}
-      <p className="text-[12px]" data-testid="now-playing" data-playing={now?.playing ? "yes" : "no"} data-time={now ? now.time.toFixed(1) : "0"} data-volume={now ? now.volume.toFixed(3) : "0"} data-track={now?.track ?? ""}>
+      <p className="text-[length:calc(12px*var(--ts))]" data-testid="now-playing" data-playing={now?.playing ? "yes" : "no"} data-time={now ? now.time.toFixed(1) : "0"} data-volume={now ? now.volume.toFixed(3) : "0"} data-track={now?.track ?? ""}>
         {now?.playing ? `♪ Now playing: ${now.track}` : "♪ Music is paused."}
       </p>
+    </div>
+  );
+}
+
+function Choice<T extends string>({ name, value, options, onPick }: { name: string; value: T; options: { id: T; label: string }[]; onPick: (v: T) => void }) {
+  return (
+    <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }} role="radiogroup" aria-label={name}>
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          role="radio"
+          aria-checked={value === o.id}
+          className="btn btn-gray btn-toggle btn-small"
+          data-choice={`${name}:${o.id}`}
+          onClick={() => {
+            playSound("click");
+            onPick(o.id);
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Text size, explanation style and automatic hints. Presentation only: no game rules change. */
+export function ReadingSettings() {
+  const ui = useUiPrefs();
+  return (
+    <div className="space-y-2" role="group" aria-label="Reading and help settings">
+      <div className="border-[2px] border-ink bg-white p-2" data-setting="text-size">
+        <div className="font-extrabold uppercase">Text size</div>
+        <Choice<TextSize>
+          name="Text size"
+          value={ui.textSize}
+          options={(["standard", "large", "xl"] as TextSize[]).map((id) => ({ id, label: TEXT_SIZE_LABEL[id] }))}
+          onPick={(v) => setUiPref("textSize", v)}
+        />
+        <p className="mt-2 border-[2px] border-dashed border-ink bg-cream p-2" data-testid="text-preview">
+          Preview: Laika says “The greenhouse needs power to grow food!”
+        </p>
+      </div>
+      <div className="border-[2px] border-ink bg-white p-2" data-setting="explain">
+        <div className="font-extrabold uppercase">Explanation style</div>
+        <Choice<ExplainStyle>
+          name="Explanation style"
+          value={ui.explain}
+          options={[
+            { id: "simple", label: "Simple" },
+            { id: "detailed", label: "Detailed" },
+          ]}
+          onPick={(v) => setUiPref("explain", v)}
+        />
+        <p className="mt-1 text-[length:calc(12px*var(--ts))]">
+          {ui.explain === "simple"
+            ? "Short lines and key words. Good for younger players. Costs and warnings stay the same."
+            : "Full explanations with more engineering detail. The Science Lab always has the full science."}
+        </p>
+      </div>
+      <div className="flex items-center justify-between gap-3 border-[2px] border-ink bg-white p-2" data-setting="auto-hints">
+        <div>
+          <div className="font-extrabold uppercase">Automatic hints</div>
+          <div className="text-[length:calc(12px*var(--ts))]">If you stay on a sol for a while, the Hint button glows and points to something useful.</div>
+        </div>
+        <button
+          type="button"
+          className="btn btn-gray btn-toggle btn-small"
+          style={{ minWidth: 64 }}
+          aria-pressed={ui.autoHints}
+          aria-label={`Automatic hints: ${ui.autoHints ? "on" : "off"}`}
+          onClick={() => setUiPref("autoHints", !ui.autoHints)}
+        >
+          {ui.autoHints ? "On" : "Off"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -99,8 +177,9 @@ interface Props {
 export function SettingsModal({ state, saveOk, onClose, onHelp, onReplay, onRestart }: Props) {
   const diff = state ? DIFFICULTIES[normalizeDifficulty(state.difficulty)] : null;
   return (
-    <Modal title="Settings" onClose={onClose} maxWidth={480}>
-      <div className="space-y-3 text-[14px]">
+    <Modal title="Settings" onClose={onClose} maxWidth={520}>
+      <div className="space-y-3 text-[length:calc(14px*var(--ts))]">
+        <ReadingSettings />
         <AudioSettings />
         {diff && (
           <p>

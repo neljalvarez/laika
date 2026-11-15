@@ -10,7 +10,7 @@ import { clearMission, loadMission, saveMission } from "@/game/persistence";
 import { rootReducer } from "@/game/reducer";
 import { randomSeed } from "@/game/rng";
 import { Credits, HowToPlay } from "./HowToPlay";
-import { IntroCutscene, OutroCutscene } from "./Cutscene";
+import { FailureCutscene, IntroCutscene, OutroCutscene } from "./Cutscene";
 import { DifficultySelect } from "./DifficultySelect";
 import { MainMenu } from "./MainMenu";
 import { MissionDashboard } from "./MissionDashboard";
@@ -19,6 +19,7 @@ import { ScienceLab } from "./ScienceLab";
 import { SettingsModal } from "./SettingsModal";
 import { StoryIntro } from "./StoryIntro";
 import { useGameSounds, useUiSounds } from "./useGameSounds";
+import { setMusicScene } from "@/lib/sound";
 
 type MenuOverlay = null | "howto" | "science" | "credits" | "settings" | "start-guided" | "start-random" | "intro-replay";
 
@@ -35,6 +36,12 @@ export function Game() {
 
   useUiSounds();
   useGameSounds(mission);
+
+  // "Against the Crimson Sky" is main-menu music only; every other screen uses the gameplay playlist.
+  const onMenu = !mission && overlay !== "intro-replay";
+  useEffect(() => {
+    setMusicScene(onMenu ? "menu" : "game");
+  }, [onMenu]);
 
   // Detect an existing save after mount (never during server render).
   useEffect(() => {
@@ -103,9 +110,11 @@ export function Game() {
     }
     const finished = mission.status !== "playing";
     if (finished && !mission.reportPending) {
-      // Win only: a short return-home story, then the full report (always shown).
+      // Win: the rescue and return-home story (ending with the memorial).
+      // Otherwise: a short, gentle sad scene. Both always lead to the full report.
       const won = mission.status === "success" || mission.status === "outstanding";
       if (won && !outroDone) return <OutroCutscene state={mission} onDone={() => setOutroDone(true)} />;
+      if (!won && !outroDone) return <FailureCutscene state={mission} onDone={() => setOutroDone(true)} />;
       return <MissionDebrief state={mission} onPlayAgain={playAgain} onMenu={restart} />;
     }
     return <MissionDashboard key={mission.seed} state={mission} dispatch={dispatch} saveOk={saveOk} onRestart={restart} />;

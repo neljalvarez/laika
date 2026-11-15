@@ -27,5 +27,5 @@ export const MEMORIAL_PHOTO: MemorialPhoto | null = {
 };
 
 export const MEMORIAL_TEXT = "In Loving Memory of Laika";
-/** Timeline of the opening, in milliseconds. */
-export const OPENING = { fadeIn: 300, memorialEnd: 2000, fadeOut: 300, rocketLands: 3000, menuReady: 3500 } as const;
+/** Timeline of the opening rocket landing, in milliseconds. */
+export const OPENING = { rocketLands: 1600, menuReady: 2100 } as const;

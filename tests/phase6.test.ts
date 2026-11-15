@@ -92,16 +92,18 @@ describe("audio channels", () => {
     expect(channelGain("sfx", p, vol)).toBeGreaterThan(0);
   });
   it("ships the supplied music files", () => {
-    expect(MUSIC_TRACKS).toHaveLength(2);
+    expect(MUSIC_TRACKS).toHaveLength(3);
+    // The main-menu theme is never in the gameplay playlist.
+    expect(MUSIC_TRACKS.filter((t) => t.scene === "menu").map((t) => t.title)).toEqual(["Against the Crimson Sky"]);
+    expect(MUSIC_TRACKS.filter((t) => t.scene === "game").map((t) => t.title)).toEqual(["Below the Red Horizon", "Last Light On The Ridge"]);
     for (const t of MUSIC_TRACKS) expect(existsSync(path.join(process.cwd(), "public", t.src))).toBe(true);
   });
 });
 
 describe("opening", () => {
-  it("uses the exact dedication and a 2 s memorial inside a 3.5 s opening", () => {
+  it("keeps the exact dedication; the startup is now just the ~2 s rocket landing", () => {
     expect(MEMORIAL_TEXT).toBe("In Loving Memory of Laika");
-    expect(OPENING.memorialEnd).toBe(2000);
-    expect(OPENING.rocketLands).toBe(3000);
-    expect(OPENING.menuReady).toBe(3500);
+    expect(OPENING.rocketLands).toBe(1600);
+    expect(OPENING.menuReady).toBe(2100);
   });
 });

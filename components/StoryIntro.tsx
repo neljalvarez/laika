@@ -56,12 +56,12 @@ export function StoryIntro({ onDone, briefOnly = false }: { onDone: () => void; 
           <div className="border-[3px] border-ink bg-slate p-2">
             <LaikaSprite mood={panel.mood} scale={5} />
           </div>
-          <div className="space-y-2 text-[16px]">
+          <div className="space-y-2 text-[length:calc(16px*var(--ts))]">
             {panel.text.map((t) => (
               <p key={t}>{t}</p>
             ))}
             {panel.bullets && (
-              <ul className="list-disc space-y-1 pl-5 text-[14px]" data-testid="mission-brief">
+              <ul className="list-disc space-y-1 pl-5 text-[length:calc(14px*var(--ts))]" data-testid="mission-brief">
                 {panel.bullets.map((b) => (
                   <li key={b}>{b}</li>
                 ))}

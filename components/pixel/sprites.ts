@@ -233,7 +233,8 @@ export type IconName =
   | "paw"
   | "book"
   | "flask"
-  | "star";
+  | "star"
+  | "bulb";
 
 export const ICONS: Record<IconName, Grid> = {
   power: [
@@ -345,6 +346,17 @@ export const ICONS: Record<IconName, Grid> = {
     ".WRRRRRW.",
     ".WWWWWWW.",
     ".........",
+  ],
+  bulb: [
+    "..EEEEE..",
+    ".EEWWEEE.",
+    "EEWEEEEEE",
+    "EEEEEEEEE",
+    ".EEEEEEE.",
+    "..EEEEE..",
+    "...YYY...",
+    "...YYY...",
+    "....Y....",
   ],
   star: [
     "....E....",

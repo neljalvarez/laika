@@ -51,7 +51,7 @@ export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
         You are the Mission Commander. Keep Laika safe and get the outpost ready for the human crew in{" "}
         <strong>10 sols</strong> (Mars days).
       </p>
-      <ol className="mb-3 list-decimal space-y-1 pl-6 text-[14px]">
+      <ol className="mb-3 list-decimal space-y-1 pl-6 text-[length:calc(14px*var(--ts))]">
         <li>Click a building to see what it does.</li>
         <li>
           In the Engineering tab, do <strong>one</strong> build each sol. <strong>Upgrade</strong> makes a building stronger.{" "}
@@ -64,7 +64,7 @@ export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
       </ol>
       <ul className="space-y-2">
         {RULES.map((r) => (
-          <li key={r.title} className="flex items-start gap-2 border-[2px] border-ink bg-white p-2 text-[13px]">
+          <li key={r.title} className="flex items-start gap-2 border-[2px] border-ink bg-white p-2 text-[length:calc(13px*var(--ts))]">
             <span className="border-[2px] border-ink bg-navy p-1">
               <PixelSprite grid={ICONS[r.icon]} scale={3} />
             </span>
@@ -75,21 +75,21 @@ export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
           </li>
         ))}
       </ul>
-      <h2 className="h-pixel mt-3 text-[14px]">Controls</h2>
-      <ul className="list-disc pl-6 text-[13px]">
+      <h2 className="h-pixel mt-3 text-[length:calc(14px*var(--ts))]">Controls</h2>
+      <ul className="list-disc pl-6 text-[length:calc(13px*var(--ts))]">
         <li>Mouse or touch: click or tap a building to select it. Its name and job appear at the top of the scene.</li>
         <li>Keyboard: Tab moves between buildings and buttons. Enter or Space selects.</li>
         <li>Settings has separate switches for music, ambience and sound effects. Nothing important is sound-only.</li>
       </ul>
-      <h2 className="h-pixel mt-3 text-[14px]">Upgrades and events</h2>
-      <ul className="list-disc pl-6 text-[13px]">
+      <h2 className="h-pixel mt-3 text-[length:calc(14px*var(--ts))]">Upgrades and events</h2>
+      <ul className="list-disc pl-6 text-[length:calc(13px*var(--ts))]">
         <li>Every upgrade earns 1 Gear. At 2, 4 and 6 Gears you unlock a small bonus (see the Gears chip beside the outpost).</li>
         <li>Each building has 3 levels. Upgrades cost materials and make the building work better for the rest of the mission.</li>
         <li>Worn or damaged buildings work less well. A repair costs {CONFIG.repairCost} materials and restores {CONFIG.repairAmount}% condition.</li>
         <li>Events give you 2–3 choices. Each shows its cost now and what happens later. You must choose before the sol continues.</li>
       </ul>
-      <h2 className="h-pixel mt-3 text-[14px]">Training recap</h2>
-      <ol className="list-decimal pl-6 text-[13px]">
+      <h2 className="h-pixel mt-3 text-[length:calc(14px*var(--ts))]">Training recap</h2>
+      <ol className="list-decimal pl-6 text-[length:calc(13px*var(--ts))]">
         {TUTORIAL_STAGES.map((s) => (
           <li key={s.title}>
             <strong>{s.title}:</strong> {s.lines[s.lines.length - 1]}
@@ -101,10 +101,10 @@ export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
           <button type="button" className="btn btn-small" onClick={onReplay}>
             Replay guided training
           </button>
-          <span className="ml-2 text-[12px]">Your mission progress is kept.</span>
+          <span className="ml-2 text-[length:calc(12px*var(--ts))]">Your mission progress is kept.</span>
         </div>
       )}
-      <p className="mt-3 text-[13px]">
+      <p className="mt-3 text-[length:calc(13px*var(--ts))]">
         Tip: you cannot upgrade everything. Engineers call this a <strong>trade-off</strong>.
       </p>
     </Modal>
@@ -114,7 +114,7 @@ export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
 export function Credits({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Credits" onClose={onClose} maxWidth={640}>
-      <div className="space-y-2 text-[14px]">
+      <div className="space-y-2 text-[length:calc(14px*var(--ts))]">
         <p>
           <strong>LAIKA: MISSION RED PLANET</strong> — a NASA Space Apps Challenge student project.
         </p>
@@ -127,8 +127,8 @@ export function Credits({ onClose }: { onClose: () => void }) {
           fonts are loaded.
         </p>
         <p>
-          <strong>Music:</strong> {MUSIC_TRACKS.map((t) => `"${t.title}"`).join(" and ")}, custom-made for this project by
-          the team.
+          <strong>Music:</strong> “Against the Crimson Sky” (main menu), “Below the Red Horizon” and “Last Light On The Ridge”
+          (gameplay), custom-made for this project by the team ({MUSIC_TRACKS.length} tracks).
           Sound effects and the Mars wind are synthesized by the game.
         </p>
         <p>
@@ -144,7 +144,7 @@ export function Credits({ onClose }: { onClose: () => void }) {
         <p>
           <strong>Science:</strong> see the NASA Science Lab for sources. Game numbers are fictional units.
         </p>
-        <p className="text-[12px]">{SCIENCE_DISCLAIMER}</p>
+        <p className="text-[length:calc(12px*var(--ts))]">{SCIENCE_DISCLAIMER}</p>
       </div>
     </Modal>
   );

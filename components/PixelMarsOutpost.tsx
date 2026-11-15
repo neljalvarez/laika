@@ -27,6 +27,22 @@ const SKY_SHARE = 0.24;
 const CELL = 76; // 48 of building + a 28-unit lane where Laika can stand
 const GROUND_EXTRA = 200; // extra ground drawn below the original 180-unit art
 
+/**
+ * Presentation of a build. `impact` (upgrades only) shakes the building with a
+ * burst and a "POOSH!" when Laika arrives; while `held` is true she waits
+ * beside it (the upgrade card is open), then cheers and walks home.
+ */
+export interface OutpostVisit {
+  id: ModuleId;
+  key: number;
+  impact?: boolean;
+  held?: boolean;
+}
+const ARRIVE_MS = 1700;
+const IMPACT_MS = 450;
+/** When the upgrade card opens: after Laika arrives and the impact settles. */
+export const UPGRADE_REVEAL_DELAY = ARRIVE_MS + IMPACT_MS + 250;
+
 export interface OutpostLayout {
   vx: number;
   vy: number;
@@ -307,7 +323,7 @@ interface OutpostProps {
   laikaBurst?: boolean;
   gear?: GearItem[];
   /** After a build, Laika walks to this building, cheers, and walks back. Change `key` to trigger. */
-  visit?: { id: ModuleId; key: number } | null;
+  visit?: OutpostVisit | null;
   /** Mouth animation while Laika is speaking. */
   talking?: boolean;
 }
@@ -355,34 +371,60 @@ export function PixelMarsOutpost({
   const [hot, setHot] = useState<ModuleId | null>(null);
   const homePos = sheltering ? layout.shelter : layout.home;
   // Presentation only: go → cheer → back. The upgrade itself is already done.
-  const [trip, setTrip] = useState<{ id: ModuleId; phase: "go" | "cheer" | "back"; step: number } | null>(null);
+  type Phase = "go" | "impact" | "wait" | "cheer" | "back";
+  const [trip, setTrip] = useState<{ id: ModuleId; phase: Phase; step: number } | null>(null);
   const visitKey = visit?.key ?? 0;
   const legs = visit ? walkRoute(layout, homePos, visit.id).length : 1;
+  const tripTimers = useRef<number[]>([]);
+  const clearTrip = () => {
+    tripTimers.current.forEach((t) => window.clearTimeout(t));
+    tripTimers.current = [];
+  };
+  const at = (ms: number, fn: () => void) => tripTimers.current.push(window.setTimeout(fn, ms));
+  /** Happy reaction beside the building, then the walk home. */
+  const cheerAndReturn = (id: ModuleId, n: number) => {
+    const leg = ARRIVE_MS / n;
+    setTrip({ id, phase: "cheer", step: 0 });
+    playSound("woof");
+    for (let i = 0; i < n; i++) at(1500 + i * leg, () => setTrip({ id, phase: "back", step: i }));
+    at(1500 + ARRIVE_MS, () => setTrip(null));
+  };
   useEffect(() => {
     if (!visit) return;
+    clearTrip();
     const id = visit.id;
     const n = legs;
-    const leg = 1700 / n;
-    const timers: number[] = [];
-    const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+    const leg = ARRIVE_MS / n;
     setTrip({ id, phase: "go", step: 0 });
     for (let i = 1; i < n; i++) at(i * leg, () => setTrip({ id, phase: "go", step: i }));
-    at(1700, () => {
-      setTrip({ id, phase: "cheer", step: 0 });
-      playSound("woof");
-    });
-    for (let i = 0; i < n; i++) at(3200 + i * leg, () => setTrip({ id, phase: "back", step: i }));
-    at(4900, () => setTrip(null));
-    return () => timers.forEach((t) => window.clearTimeout(t));
+    if (visit.impact) {
+      at(ARRIVE_MS, () => {
+        setTrip({ id, phase: "impact", step: 0 });
+        playSound("poosh"); // exactly once per successful upgrade
+      });
+      at(ARRIVE_MS + IMPACT_MS, () => setTrip({ id, phase: "wait", step: 0 }));
+    } else {
+      at(ARRIVE_MS, () => cheerAndReturn(id, n));
+    }
+    return clearTrip;
     // Only a new visit key starts a trip.
   }, [visitKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The upgrade card was closed: Laika celebrates (immediately, or as soon as she arrives).
+  const released = visit ? !visit.held : true;
+  useEffect(() => {
+    if (!released || !trip || trip.phase !== "wait") return;
+    cheerAndReturn(trip.id, legs);
+  }, [released, trip?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => clearTrip, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const atBuilding = trip && (trip.phase === "cheer" || trip.phase === "impact" || trip.phase === "wait");
   const laikaPos = !trip
     ? homePos
-    : trip.phase === "cheer"
+    : atBuilding
       ? layout.visit[trip.id]
       : walkRoute(layout, homePos, trip.id, trip.phase === "back")[trip.step] ?? homePos;
-  const legMs = trip && trip.phase !== "cheer" ? Math.round(1700 / walkRoute(layout, homePos, trip.id).length) - 60 : 1600;
-  const tripWalking = trip !== null && trip.phase !== "cheer";
+  const legMs = trip && (trip.phase === "go" || trip.phase === "back") ? Math.round(ARRIVE_MS / walkRoute(layout, homePos, trip.id).length) - 60 : 1600;
+  const impactId = trip?.phase === "impact" ? trip.id : null;
+  const tripWalking = trip !== null && (trip.phase === "go" || trip.phase === "back");
   const cheering = trip?.phase === "cheer";
 
   // Walk cycle only while Laika is actually changing position (purely visual).
@@ -430,7 +472,7 @@ export function PixelMarsOutpost({
           <g
             key={id}
             transform={`translate(${p.x} ${p.y})`}
-            className={`module-hit${highlight === id ? " tutorial-pulse" : ""}${flash?.id === id ? " module-flash" : ""}${isSel ? " module-selected" : ""}`}
+            className={`module-hit${highlight === id ? " tutorial-pulse" : ""}${flash?.id === id ? " module-flash" : ""}${isSel ? " module-selected" : ""}${impactId === id ? " module-impact" : ""}`}
             role={interactive ? "button" : undefined}
             tabIndex={interactive ? 0 : undefined}
             aria-pressed={interactive ? isSel : undefined}
@@ -470,6 +512,34 @@ export function PixelMarsOutpost({
                 <rect x={22} y={-7} width={5} height={1} />
                 <rect x={23} y={-6} width={3} height={1} />
                 <rect x={24} y={-5} width={1} height={1} />
+              </g>
+            )}
+            {impactId === id && (
+              // Upgrade burst: chunky dust puffs and sparkles in discrete steps, then "LEVEL UP!".
+              <g className="upgrade-burst" pointerEvents="none" data-testid="upgrade-burst" aria-hidden="true">
+                <g className="burst-dust-l" fill={C.sand}>
+                  <rect x={-2} y={34} width={8} height={5} />
+                  <rect x={-6} y={30} width={5} height={4} />
+                  <rect x={2} y={29} width={4} height={3} />
+                </g>
+                <g className="burst-dust-r" fill={C.sand}>
+                  <rect x={42} y={34} width={8} height={5} />
+                  <rect x={49} y={30} width={5} height={4} />
+                  <rect x={42} y={29} width={4} height={3} />
+                </g>
+                <g className="burst-spark" fill={C.yellow}>
+                  <rect x={6} y={2} width={1} height={5} />
+                  <rect x={4} y={4} width={5} height={1} />
+                  <rect x={41} y={-2} width={1} height={5} />
+                  <rect x={39} y={0} width={5} height={1} />
+                  <rect x={24} y={-8} width={1} height={5} />
+                  <rect x={22} y={-6} width={5} height={1} />
+                  <rect x={14} y={-4} width={2} height={2} fill={C.cream} />
+                  <rect x={33} y={-6} width={2} height={2} fill={C.cream} />
+                </g>
+                <text x={24} y={-12} textAnchor="middle" className="scene-label scene-label-hot float-up">
+                  LEVEL {m.level}!
+                </text>
               </g>
             )}
             {flash?.id === id && (
@@ -520,7 +590,7 @@ export function PixelMarsOutpost({
       >
         <rect x={5} y={25} width={16} height={2} fill={C.rock} fillOpacity={0.45} />
         <g
-          className={mood === "celebrate" ? "laika-hop" : laikaBurst || cheering ? "laika-hop-brief" : walking || tripWalking ? undefined : "laika-bob"}
+          className={mood === "celebrate" ? "laika-hop" : laikaBurst || cheering ? "laika-hop-brief" : walking || tripWalking ? undefined : trip?.phase === "wait" || trip?.phase === "impact" ? "laika-wag" : "laika-bob"}
           data-laika-trip={trip ? `${trip.id}:${trip.phase}` : "home"}
         >
           <LaikaFrames mood={trip ? "happy" : mood} walking={walking || tripWalking} gear={gear} talking={talking && !trip} />

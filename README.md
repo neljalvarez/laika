@@ -185,7 +185,7 @@ on phones.
 Every step below was performed in a real browser on 2026-11-15. "Start New Mission" uses the fixed seed 1957, so the
 first sols are the same every time. Open the game in a fresh tab (or a private window) so the opening plays.
 
-1. **Opening (4 s):** the memorial (Laika's photograph and "In Loving Memory of Laika") fades, the rocket lands, the menu appears.
+1. **Opening (2 s):** the rocket lands and the menu appears. (The memorial for the real Laika now closes the successful ending.)
 2. **Mission introduction:** Start New Mission → Normal → keep "Play the training first" ticked → Start Mission.
    Let the Sputnik 2 intro run a few scenes, then press **Skip Intro**. Read the "Your mission" brief → Begin Sol 1.
 3. **Building interaction (training, ~1 min):** Begin Training → click the **Solar Array** → tap a resource bar to
@@ -263,7 +263,7 @@ Re-checked on 2026-11-15. Full details, where each is used and what is real vers
 
 - **Team:** repository owner `neljalvarez`. *Team members and roles: to be filled in by the team.*
 - **Art:** original pixel art drawn in code for this project (see SOURCES.md).
-- **Music:** "Against the Crimson Sky" and "Last Light On The Ridge", custom-made for this project.
+- **Music:** "Against the Crimson Sky" (main menu), "Below the Red Horizon" and "Last Light On The Ridge" (gameplay), custom-made for this project.
 - **Sound effects:** synthesized in the browser.
 - **Memorial photograph:** historical photograph of Laika (1957), supplied by the team (see SOURCES.md).
 - **Development:** built with Claude (Anthropic) through Claude Code under the team's direction.
@@ -326,3 +326,33 @@ The story is fiction: the real Laika flew on Sputnik 2 in 1957 and did not survi
 ### Deploying
 
 The project is a standard Next.js app with no backend or environment variables. On Vercel: import the GitHub repository, keep the default Next.js settings, and deploy `main`. Locally: `npm install`, `npm run build`, `npm start`.
+
+## Phase 8: story, character feedback, accessibility and hints
+
+- **Upgrade impact.** After an upgrade (the engine has already applied it and charged materials once), Laika walks to
+  the building, it shakes for 0.42 s with a pixel dust-and-sparkle burst and a synthesized "POOSH!", then the upgrade
+  card shows the new level. Closing the card makes Laika cheer and walk home. Repairs keep the old jingle. Reduced
+  motion: no shake.
+- **Failure scene (≈7 s, Skip Cutscene).** For an aborted mission or a mission that ends without the base being
+  ready: the outpost darkens, a close-up of sad Laika with a falling tear and a quiet whimper (no music), then
+  "Every mission teaches us something. Let's try again." and the full report. Laika is always shown safe.
+- **New success ending (≈44 s, Skip Outro on every scene):** rocket lands at the outpost → astronaut: "Laika!" →
+  Laika runs over: "You made it, Laika. Good job!" → they board and lift off → real score categories on the way home
+  → FINAL MISSION GRADE reveal → Earth landing with a cheering crowd → Golden Treat Award (story only, no score
+  change) → Laika asleep at home with her family → **In Loving Memory of Laika** (real photograph, typed text, no
+  music) → full report.
+- **Memorial moved** from startup to the end of the success story. Startup is now just the rocket landing (~2 s).
+- **Settings → Text size** (Standard / Large / Extra Large = 100 / 115 / 130 %, live preview, saved, available on the
+  main menu). Only text grows; buildings and the outpost keep their size. Dialogs now always fit the screen.
+- **Settings → Explanation style** (Simple / Detailed). Simple uses short lines for buildings, upgrade/repair,
+  emergencies, the mission line and the tutorial (`data/simple.ts`). Costs, numbers and warnings are identical; the
+  Science Lab keeps the full science. Gameplay is identical: the same missions give the same scores in both styles.
+- **Hint button** (bulb) picks one useful thing from the real game state (`game/hints.ts`: emergency, damaged
+  building, low power, low food, radiation, low air, supply delivery, today's mission, or Advance Sol) and spotlights it
+  with the tutorial spotlight. It never acts for the player.
+- **Automatic hints** (Settings, default ON): after about 60 s of real idle play the Hint button glows; at about 75 s a
+  hint appears. Only on a calm screen (no tutorial, dialog, cutscene or hidden tab), at most once per sol, no effect on
+  score or difficulty.
+- **Music routing:** "Against the Crimson Sky" only on the main menu (fades out in ~0.4 s when leaving); everywhere
+  else "Below the Red Horizon" then "Last Light On The Ridge". One audio element; each screen resumes where it left off.
+- **Overview tab** uses larger text and fills the panel height (no empty space).

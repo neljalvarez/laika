@@ -24,7 +24,7 @@ export function ScienceLab({ onClose, focus }: Props) {
 
   return (
     <Modal title="NASA Science Lab" onClose={onClose} maxWidth={980}>
-      <p className="mb-3 text-[14px]">
+      <p className="mb-3 text-[length:calc(14px*var(--ts))]">
         Real space science behind the game. <strong>Blue</strong> = what NASA really found. <strong>Orange</strong> = how our
         game keeps it simple. Game numbers are made-up units.
       </p>
@@ -41,14 +41,14 @@ export function ScienceLab({ onClose, focus }: Props) {
               <span className="border-[2px] border-ink bg-navy p-[2px]">
                 <PixelSprite grid={ICONS[card.icon]} scale={3} />
               </span>
-              <h2 className="h-pixel text-[15px] text-cream" tabIndex={-1}>
+              <h2 className="h-pixel text-[length:calc(15px*var(--ts))] text-cream" tabIndex={-1}>
                 {card.title}
               </h2>
             </div>
-            <div className="space-y-2 p-2 text-[13px]">
-              <p className="text-[14px] font-bold">{card.simple}</p>
+            <div className="space-y-2 p-2 text-[length:calc(13px*var(--ts))]">
+              <p className="text-[length:calc(14px*var(--ts))] font-bold">{card.simple}</p>
               <div className="border-l-[6px] border-pixelblue pl-2">
-                <div className="h-pixel text-[12px]">
+                <div className="h-pixel text-[length:calc(12px*var(--ts))]">
                   <span className="tag" style={{ background: "#6fb1f5" }}>
                     Real
                   </span>{" "}
@@ -57,7 +57,7 @@ export function ScienceLab({ onClose, focus }: Props) {
                 <p>{card.observed}</p>
               </div>
               <div className="border-l-[6px] border-sand pl-2">
-                <div className="h-pixel text-[12px]">
+                <div className="h-pixel text-[length:calc(12px*var(--ts))]">
                   <span className="tag tag-warn">Game</span> How we simplify it
                 </div>
                 <p>{card.simplified}</p>
@@ -84,7 +84,7 @@ export function ScienceLab({ onClose, focus }: Props) {
           </article>
         ))}
       </div>
-      <p className="mt-3 text-[12px]">{SCIENCE_DISCLAIMER}</p>
+      <p className="mt-3 text-[length:calc(12px*var(--ts))]">{SCIENCE_DISCLAIMER}</p>
     </Modal>
   );
 }

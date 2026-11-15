@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { TEXT_SIZE_BOOT } from "@/lib/prefsKey";
 
 export const metadata: Metadata = {
   title: "LAIKA: Mission Red Planet",
@@ -15,7 +16,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Applies the saved text size before the first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: TEXT_SIZE_BOOT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

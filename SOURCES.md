@@ -46,7 +46,7 @@ not a physical measurement.
 
 | Item | Status |
 |---|---|
-| Black-and-white photograph of Laika in her flight harness, 1957 — `public/memorial/laika.jpg` (300 × 221) | Supplied and approved by the project team on 2026-11-15 for the "In Loving Memory of Laika" opening. It is a widely published Soviet-era photograph; the original photographer and its licence are **not recorded** in the repository. Credited in-game on the Credits screen (`data/memorial.ts`). |
+| Black-and-white photograph of Laika in her flight harness, 1957 — `public/memorial/laika.jpg` (300 × 221) | Supplied and approved by the project team on 2026-11-15 for the "In Loving Memory of Laika" memorial (since Phase 8 it closes the successful ending). It is a widely published Soviet-era photograph; the original photographer and its licence are **not recorded** in the repository. Credited in-game on the Credits screen (`data/memorial.ts`). |
 
 ### Music
 
@@ -54,11 +54,16 @@ not a physical measurement.
 |---|---|---|
 | "Against the Crimson Sky" | `public/audio/against-the-crimson-sky.mp3` | Custom-made for this project; the team confirmed this on 2026-11-15. |
 | "Last Light On The Ridge" | `public/audio/last-light-on-the-ridge.mp3` | Custom-made for this project; confirmed by the team on 2026-11-15. |
+| "Below the Red Horizon" | `public/audio/below-the-red-horizon.mp3` | Supplied by the team on 2026-11-15 to replace "Against the Crimson Sky" during gameplay; treated as custom-made like the other tracks (**the team should confirm**). |
+
+"Against the Crimson Sky" plays only on the main menu. Gameplay, the intro and the endings use "Below the Red
+Horizon" followed by "Last Light On The Ridge". The failure scene and the memorial have no music.
 
 ### Sound effects and ambience
 
-Synthesized at runtime with the browser's Web Audio API (`lib/sound.ts`). No recorded audio files. The Mars wind is
-filtered noise, not a recording from Mars.
+Synthesized at runtime with the browser's Web Audio API (`lib/sound.ts`), including the upgrade "POOSH!", Laika's
+whimper and barks, the astronaut's voice blips, the crowd cheer and the memorial's typewriter ticks. No recorded
+audio files. The Mars wind is filtered noise, not a recording from Mars.
 
 ### Artwork
 

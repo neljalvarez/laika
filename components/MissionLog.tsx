@@ -16,7 +16,7 @@ export function MissionLogList({ log, maxHeight = 420, compact = false }: { log:
   return (
     <ol className="scroll-y space-y-1 pr-1" style={{ maxHeight }} aria-label="Mission log entries" tabIndex={0}>
       {log.map((e, i) => (
-        <li key={i} className="border-[2px] border-ink bg-white p-2 text-[13px]">
+        <li key={i} className="border-[2px] border-ink bg-white p-2 text-[length:calc(13px*var(--ts))]">
           <div className="flex flex-wrap items-center gap-2">
             <span className="tag" style={{ background: "#27334C", color: "#FFF1D0" }}>
               Sol {e.sol}
@@ -26,7 +26,7 @@ export function MissionLogList({ log, maxHeight = 420, compact = false }: { log:
           </div>
           {compact ? (
             <details>
-              <summary className="cursor-pointer text-[12px] font-bold">Details</summary>
+              <summary className="cursor-pointer text-[length:calc(12px*var(--ts))] font-bold">Details</summary>
               <div>{e.detail}</div>
             </details>
           ) : (
@@ -41,7 +41,7 @@ export function MissionLogList({ log, maxHeight = 420, compact = false }: { log:
 export function MissionLog({ log, onClose }: { log: LogEntry[]; onClose: () => void }) {
   return (
     <Modal title="Mission Log" onClose={onClose} maxWidth={760}>
-      <p className="mb-2 text-[13px]">Every event, decision and daily change, oldest first.</p>
+      <p className="mb-2 text-[length:calc(13px*var(--ts))]">Every event, decision and daily change, oldest first.</p>
       <MissionLogList log={log} />
     </Modal>
   );

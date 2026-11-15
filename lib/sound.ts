@@ -19,7 +19,15 @@ export type SoundName =
   | "woof"
   | "gear"
   | "boom"
-  | "whoosh";
+  | "whoosh"
+  | "poosh"
+  | "whine"
+  | "type"
+  | "rise"
+  | "pop"
+  | "cheer"
+  | "sparkle"
+  | "voice";
 
 interface Note {
   /** Frequency in Hz. */
@@ -28,6 +36,12 @@ interface Note {
   t: number;
   /** Duration in seconds. */
   d: number;
+  /** Optional pitch glide: frequency reached at the end of the note. */
+  to?: number;
+  /** Filtered noise instead of a tone (f = filter centre). */
+  noise?: boolean;
+  /** Per-note loudness multiplier. */
+  g?: number;
 }
 
 interface Cue {
@@ -57,6 +71,45 @@ export const CUES: Record<SoundName, Cue> = {
   gear: { wave: "square", gain: 0.04, gap: 500, notes: seq([784, 988, 1175, 1568], 0.07, 0.08) },
   boom: { wave: "triangle", gain: 0.1, gap: 500, notes: [{ f: 110, t: 0, d: 0.18 }, { f: 73, t: 0.12, d: 0.3 }] },
   whoosh: { wave: "triangle", gain: 0.06, gap: 400, notes: seq([196, 262, 330, 440, 587], 0.06, 0.09) },
+  // Upgrade impact "POOSH!": a soft noise puff, a falling thump and a bright confirmation chime.
+  poosh: {
+    wave: "square",
+    gain: 0.09,
+    gap: 400,
+    notes: [
+      { f: 1400, to: 300, t: 0, d: 0.28, noise: true, g: 1.6 },
+      { f: 260, to: 90, t: 0, d: 0.2, g: 0.7 },
+      { f: 784, t: 0.16, d: 0.07, g: 0.45 },
+      { f: 1175, t: 0.23, d: 0.14, g: 0.45 },
+    ],
+  },
+  // A quiet, short dog whimper for the failure scene (two soft falling glides).
+  whine: {
+    wave: "triangle",
+    gain: 0.05,
+    gap: 3000,
+    notes: [
+      { f: 820, to: 1150, t: 0, d: 0.28 },
+      { f: 1120, to: 760, t: 0.3, d: 0.42 },
+      { f: 900, to: 640, t: 0.76, d: 0.4, g: 0.7 },
+    ],
+  },
+  /** Typewriter tick: very short and quiet so a whole line never gets loud. */
+  type: { wave: "square", gain: 0.012, gap: 40, notes: [{ f: 1900, t: 0, d: 0.016 }] },
+  rise: { wave: "square", gain: 0.03, gap: 1500, notes: [{ f: 220, to: 880, t: 0, d: 1.1 }] },
+  pop: { wave: "square", gain: 0.035, gap: 120, notes: seq([660, 990], 0.05, 0.05) },
+  cheer: {
+    wave: "triangle",
+    gain: 0.05,
+    gap: 1500,
+    notes: [
+      { f: 1600, t: 0, d: 0.7, noise: true, g: 0.8 },
+      ...seq([784, 988, 1175, 988, 1319], 0.1, 0.08),
+    ],
+  },
+  sparkle: { wave: "triangle", gain: 0.045, gap: 600, notes: seq([1568, 2093, 2637, 3136], 0.06, 0.08) },
+  /** The astronaut's speech: lower blips than Laika's. */
+  voice: { wave: "square", gain: 0.03, gap: 400, notes: seq([330, 392, 294, 349], 0.08, 0.06) },
   failure: { wave: "triangle", gain: 0.1, gap: 2000, notes: [...seq([392, 330, 262], 0.16, 0.15), { f: 196, t: 0.48, d: 0.35 }] },
 };
 
@@ -139,6 +192,37 @@ function loadPref(): void {
 
 // Effects and ambience run through one gain node each, so sliders act at once.
 let sfxBus: GainNode | null = null;
+let noiseBuf: AudioBuffer | null = null;
+function noiseBuffer(audio: AudioContext): AudioBuffer {
+  if (noiseBuf && noiseBuf.sampleRate === audio.sampleRate) return noiseBuf;
+  const b = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.8), audio.sampleRate);
+  const d = b.getChannelData(0);
+  let seed = 2026;
+  for (let i = 0; i < d.length; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    d[i] = (seed / 0x7fffffff) * 2 - 1;
+  }
+  noiseBuf = b;
+  return b;
+}
+
+/**
+ * Silences every sound effect that is playing or already scheduled (used when a
+ * cutscene is skipped). The next effect gets a fresh channel.
+ */
+export function stopAllSfx(): void {
+  try {
+    const old = sfxBus;
+    sfxBus = null;
+    if (old && ctx) {
+      old.gain.cancelScheduledValues(ctx.currentTime);
+      old.gain.setValueAtTime(0, ctx.currentTime);
+    }
+    window.setTimeout(() => old?.disconnect(), 50);
+  } catch {
+    // Audio must never break the game.
+  }
+}
 let ambienceBus: GainNode | null = null;
 function bus(kind: "sfx" | "ambience", audio: AudioContext): GainNode {
   let node = kind === "sfx" ? sfxBus : ambienceBus;
@@ -190,20 +274,38 @@ function getContext(): AudioContext | null {
  * other in an endless loop. A single <audio> element exists for the whole app,
  * so switching tabs, opening Settings or advancing a sol never restarts it.
  */
-export const MUSIC_TRACKS: { title: string; src: string }[] = [
-  { title: "Against the Crimson Sky", src: "/audio/against-the-crimson-sky.mp3" },
-  { title: "Last Light On The Ridge", src: "/audio/last-light-on-the-ridge.mp3" },
+export type MusicScene = "menu" | "game" | "none";
+/**
+ * The team's custom tracks. "Against the Crimson Sky" belongs to the main menu
+ * only; gameplay plays "Below the Red Horizon" then "Last Light On The Ridge".
+ */
+export const MUSIC_TRACKS: { title: string; src: string; scene: Exclude<MusicScene, "none"> }[] = [
+  { title: "Against the Crimson Sky", src: "/audio/against-the-crimson-sky.mp3", scene: "menu" },
+  { title: "Below the Red Horizon", src: "/audio/below-the-red-horizon.mp3", scene: "game" },
+  { title: "Last Light On The Ridge", src: "/audio/last-light-on-the-ridge.mp3", scene: "game" },
 ];
+const playlist = (scene: Exclude<MusicScene, "none">) => MUSIC_TRACKS.filter((t) => t.scene === scene);
 const AMBIENCE_GAIN = 0.03;
 
 interface MusicPlayer {
   el: HTMLAudioElement;
+  /** Which playlist is loaded, and the index within it. */
+  scene: Exclude<MusicScene, "none">;
   track: number;
   playing: boolean;
   fading: boolean;
   fadeTimer: number | null;
 }
 let music: MusicPlayer | null = null;
+let musicScene: MusicScene = "none";
+/** Reasons the music must be silent right now (e.g. a sad scene or the memorial). */
+const silencers = new Set<string>();
+/** Where each playlist was paused, so returning to a screen resumes instead of restarting. */
+const resumeAt: Record<Exclude<MusicScene, "none">, { track: number; time: number }> = {
+  menu: { track: 0, time: 0 },
+  game: { track: 0, time: 0 },
+};
+let musicGen = 0;
 interface AmbienceLayer {
   out: GainNode;
   nodes: AudioScheduledSourceNode[];
@@ -233,44 +335,100 @@ function fadeMusic(player: MusicPlayer, target: () => number, ms: number, done?:
   }, 40);
 }
 
-function startMusic(): void {
+function loadTrack(player: MusicPlayer, scene: Exclude<MusicScene, "none">): void {
+  if (player.el.src && player.scene !== scene) {
+    resumeAt[player.scene] = { track: player.track, time: player.el.currentTime || 0 };
+  }
+  const list = playlist(scene);
+  const pos = resumeAt[scene];
+  player.scene = scene;
+  player.track = pos.track % list.length;
+  const want = new URL(list[player.track].src, window.location.href).href;
+  if (player.el.src !== want) {
+    player.el.src = list[player.track].src;
+    if (pos.time > 0) {
+      const t = pos.time;
+      player.el.addEventListener("loadedmetadata", () => {
+        try {
+          player.el.currentTime = t;
+        } catch {
+          // Seeking failed: start from the top.
+        }
+      }, { once: true });
+    }
+  }
+}
+
+function startMusic(scene: Exclude<MusicScene, "none">): void {
   if (typeof Audio === "undefined") return;
   if (!music) {
     const el = new Audio();
     el.preload = "auto";
-    el.src = MUSIC_TRACKS[0].src;
-    const player: MusicPlayer = { el, track: 0, playing: false, fading: false, fadeTimer: null };
-    // When one track ends the next begins, and the pair repeats forever.
+    const player: MusicPlayer = { el, scene, track: 0, playing: false, fading: false, fadeTimer: null };
+    // When one track ends the next one of the same playlist begins, forever.
     el.addEventListener("ended", () => {
-      player.track = (player.track + 1) % MUSIC_TRACKS.length;
-      el.src = MUSIC_TRACKS[player.track].src;
+      const list = playlist(player.scene);
+      player.track = (player.track + 1) % list.length;
+      el.src = list[player.track].src;
       if (player.playing) void el.play().catch(() => undefined);
     });
     music = player;
+    loadTrack(player, scene);
   }
   const player = music;
-  if (player.playing) return;
-  player.playing = true;
-  player.el.volume = 0;
-  // play() can be refused before a user gesture; that is fine, we try again on the next sync.
-  void player.el
-    .play()
-    .then(() => {
-      if (player.playing) fadeMusic(player, () => Math.min(1, channelGain("music")), 800);
-    })
-    .catch(() => {
-      player.playing = false;
+  const gen = ++musicGen;
+  const begin = () => {
+    if (gen !== musicGen) return;
+    if (player.scene !== scene || !player.el.src) loadTrack(player, scene);
+    player.playing = true;
+    player.el.volume = 0;
+    // play() can be refused before a user gesture; that is fine, we try again on the next sync.
+    void player.el
+      .play()
+      .then(() => {
+        if (player.playing && gen === musicGen) fadeMusic(player, () => Math.min(1, channelGain("music")), 800);
+      })
+      .catch(() => {
+        player.playing = false;
+      });
+  };
+  if (player.playing && player.scene === scene) return;
+  if (player.playing && !player.el.paused) {
+    // Changing screens: fade the old tune out (~0.4 s) before the new one starts.
+    player.playing = false;
+    fadeMusic(player, () => 0, 400, () => {
+      player.el.pause();
+      begin();
     });
+    return;
+  }
+  begin();
 }
 
-/** Pauses (never rewinds), so the tune carries on from the same place later. */
+/** Fades out (~0.4 s) and pauses, never rewinds, so the tune can carry on later. */
 function stopMusic(): void {
   const player = music;
   if (!player || !player.playing) return;
   player.playing = false;
-  fadeMusic(player, () => 0, 250, () => {
-    if (!player.playing) player.el.pause();
+  const gen = ++musicGen;
+  fadeMusic(player, () => 0, 400, () => {
+    if (!player.playing && gen === musicGen) player.el.pause();
   });
+}
+
+/** Which screen's music should play: the main menu's, gameplay's, or none. */
+export function setMusicScene(scene: MusicScene): void {
+  if (musicScene === scene) return;
+  musicScene = scene;
+  syncLayers();
+}
+
+/** Silences (or releases) the music for a named reason, e.g. the memorial. */
+export function setMusicSilenced(reason: string, on: boolean): void {
+  if (on === silencers.has(reason)) return;
+  if (on) silencers.add(reason);
+  else silencers.delete(reason);
+  syncLayers();
 }
 
 /** Soft synthesized "wind" (filtered noise) plus a faint equipment hum. Artistic, not a Mars recording. */
@@ -358,10 +516,10 @@ function syncLayers(): void {
   try {
     if (typeof document === "undefined") return;
     const visible = document.visibilityState !== "hidden";
-    const wantMusic = unlocked && visible && prefs.master && prefs.music;
+    const wantMusic = unlocked && visible && prefs.master && prefs.music && musicScene !== "none" && silencers.size === 0;
     const wantAmbience = unlocked && visible && prefs.master && prefs.ambience;
     const audio = wantMusic || wantAmbience ? getContext() : ctx;
-    if (wantMusic) startMusic();
+    if (wantMusic && musicScene !== "none") startMusic(musicScene);
     else stopMusic();
     if (wantAmbience && audio) startAmbience(audio);
     else stopAmbience(audio);
@@ -427,9 +585,15 @@ export function setAudioVolume(key: AudioPrefKey, value: number): void {
 }
 
 /** For tests and the browser check: what the music element is doing right now. */
-export function musicStatus(): { playing: boolean; track: string; time: number; volume: number } | null {
+export function musicStatus(): { playing: boolean; track: string; time: number; volume: number; scene: MusicScene } | null {
   if (!music) return null;
-  return { playing: music.playing && !music.el.paused, track: MUSIC_TRACKS[music.track].title, time: music.el.currentTime, volume: music.el.volume };
+  return {
+    playing: music.playing && !music.el.paused,
+    track: playlist(music.scene)[music.track]?.title ?? "",
+    time: music.el.currentTime,
+    volume: music.el.volume,
+    scene: musicScene,
+  };
 }
 
 export function isSoundEnabled(): boolean {
@@ -461,19 +625,37 @@ export function playSound(name: SoundName, delayMs = 0): boolean {
     lastPlayed[name] = now + delayMs;
     const start = audio.currentTime + 0.01 + delayMs / 1000;
     for (const n of cue.notes) {
-      const osc = audio.createOscillator();
+      const at = start + n.t;
+      const peak = cue.gain * (n.g ?? 1);
       const amp = audio.createGain();
-      osc.type = cue.wave;
-      osc.frequency.setValueAtTime(n.f, start + n.t);
       // Short stepped envelope: instant attack, quick release (no clicks).
-      amp.gain.setValueAtTime(0, start + n.t);
-      amp.gain.linearRampToValueAtTime(cue.gain, start + n.t + 0.005);
-      amp.gain.setValueAtTime(cue.gain, start + n.t + Math.max(0.006, n.d - 0.02));
-      amp.gain.linearRampToValueAtTime(0, start + n.t + n.d);
-      osc.connect(amp);
+      amp.gain.setValueAtTime(0, at);
+      amp.gain.linearRampToValueAtTime(peak, at + 0.005);
+      amp.gain.setValueAtTime(peak, at + Math.max(0.006, n.d - 0.02));
+      amp.gain.linearRampToValueAtTime(0, at + n.d);
       amp.connect(bus("sfx", audio));
-      osc.start(start + n.t);
-      osc.stop(start + n.t + n.d + 0.02);
+      let src: AudioScheduledSourceNode;
+      if (n.noise) {
+        const noise = audio.createBufferSource();
+        noise.buffer = noiseBuffer(audio);
+        const filter = audio.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.Q.value = 1.2;
+        filter.frequency.setValueAtTime(n.f, at);
+        if (n.to) filter.frequency.exponentialRampToValueAtTime(n.to, at + n.d);
+        noise.connect(filter);
+        filter.connect(amp);
+        src = noise;
+      } else {
+        const osc = audio.createOscillator();
+        osc.type = cue.wave;
+        osc.frequency.setValueAtTime(n.f, at);
+        if (n.to) osc.frequency.exponentialRampToValueAtTime(n.to, at + n.d);
+        osc.connect(amp);
+        src = osc;
+      }
+      src.start(at);
+      src.stop(at + n.d + 0.02);
     }
     return true;
   } catch {
@@ -488,6 +670,10 @@ export function resetSoundForTests(): void {
     music.el.pause();
     music = null;
   }
+  musicScene = "none";
+  silencers.clear();
+  resumeAt.menu = { track: 0, time: 0 };
+  resumeAt.game = { track: 0, time: 0 };
   stopAmbience(null);
   ctx = null;
   sfxBus = null;
