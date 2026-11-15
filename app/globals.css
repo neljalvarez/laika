@@ -868,3 +868,146 @@ table.report thead th {
   background: var(--color-rock);
   color: var(--color-cream);
 }
+
+/* Retro volume slider: chunky track, square thumb, no rounded corners. */
+.pixel-range {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.pixel-range::-webkit-slider-runnable-track {
+  height: 12px;
+  border: 3px solid var(--color-ink);
+  background: linear-gradient(to right, var(--color-gold) var(--fill, 50%), #c9c2ae var(--fill, 50%));
+}
+.pixel-range::-moz-range-track {
+  height: 6px;
+  border: 3px solid var(--color-ink);
+  background: linear-gradient(to right, var(--color-gold) var(--fill, 50%), #c9c2ae var(--fill, 50%));
+}
+.pixel-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 26px;
+  margin-top: -10px;
+  border: 3px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-cream);
+  box-shadow: 2px 2px 0 0 rgba(20, 28, 50, 0.55);
+}
+.pixel-range::-moz-range-thumb {
+  width: 12px;
+  height: 22px;
+  border: 3px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-cream);
+}
+.pixel-range:focus-visible {
+  outline: 3px solid var(--color-blue, #2f6fd0);
+  outline-offset: 2px;
+}
+.pixel-range:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- Opening: memorial, then the rocket lands and the menu appears ---- */
+.memorial {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.memorial-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  max-width: 560px;
+}
+.memorial-photo {
+  max-width: 100%;
+  max-height: 58vh;
+  border: 2px solid #3a3a3a;
+  image-rendering: auto;
+}
+.memorial-text {
+  font-family: var(--font-pixel);
+  font-size: clamp(16px, 2.6vw, 26px);
+  letter-spacing: 0.12em;
+  color: #e8e2d2;
+  text-align: center;
+}
+/* Nothing of the menu shows before the rocket is down (also without motion). */
+.title-opening .title-reveal,
+.title-opening .title-flame {
+  opacity: 0;
+}
+.title-flame,
+.title-dust rect {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .memorial {
+    animation: memorial-out 0.3s linear 1.7s both;
+  }
+  .memorial-inner {
+    animation: memorial-in 0.3s linear both;
+  }
+  .title-opening .title-rocket {
+    animation: rocket-land 3s steps(48, end) both;
+  }
+  .title-opening .title-flame {
+    animation: rocket-flame 0.2s steps(2, end) 15, flame-off 0.01s linear 3s both;
+    opacity: 1;
+  }
+  .title-opening .title-dust-l {
+    animation: dust-left 0.5s steps(5, end) 3s both;
+  }
+  .title-opening .title-dust-r {
+    animation: dust-right 0.5s steps(5, end) 3s both;
+  }
+  .title-opening .title-reveal {
+    animation: title-reveal 0.5s steps(5, end) 3s both;
+  }
+}
+@keyframes memorial-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes memorial-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes rocket-land {
+  from { transform: translateY(-240px); }
+  to { transform: translateY(0); }
+}
+@keyframes rocket-flame {
+  from { transform: translateY(0); }
+  to { transform: translateY(2px); }
+}
+@keyframes flame-off {
+  to { opacity: 0; }
+}
+@keyframes dust-left {
+  0% { opacity: 0.9; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(-22px, -6px); }
+}
+@keyframes dust-right {
+  0% { opacity: 0.9; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(22px, -6px); }
+}
+@keyframes title-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

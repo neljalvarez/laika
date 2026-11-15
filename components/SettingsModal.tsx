@@ -2,19 +2,29 @@
 
 import { DIFFICULTIES, normalizeDifficulty } from "@/game/difficulty";
 import type { MissionState } from "@/game/types";
-import { playSound, unlockAudio, type AudioPrefKey } from "@/lib/sound";
+import { useEffect, useState } from "react";
+import { musicStatus, playSound, unlockAudio, type AudioPrefKey } from "@/lib/sound";
 import { Modal } from "./Modal";
-import { useAudioPrefs } from "./useGameSounds";
+import { useAudioPrefs, useAudioVolumes } from "./useGameSounds";
 
 const AUDIO_ROWS: { key: AudioPrefKey; label: string; help: string }[] = [
-  { key: "music", label: "Music", help: "Calm 8-bit background tune." },
+  { key: "master", label: "Master volume", help: "Turns everything up or down." },
+  { key: "music", label: "Music", help: "The mission soundtrack." },
   { key: "ambience", label: "Ambience", help: "Soft Mars wind and station hum." },
-  { key: "sfx", label: "Sound effects", help: "Clicks, alerts and jingles." },
+  { key: "sfx", label: "Sound effects", help: "Clicks, alerts, Laika's voice." },
 ];
 
-/** Music, ambience and sound effects are independent; "All sound" mutes everything. */
+/** Four channels, each with an on/off switch and a real volume slider. */
 export function AudioSettings() {
   const [prefs, setPref] = useAudioPrefs();
+  const [volumes, setVolume] = useAudioVolumes();
+  const [now, setNow] = useState<ReturnType<typeof musicStatus>>(null);
+  useEffect(() => {
+    const tick = () => setNow(musicStatus());
+    tick();
+    const t = window.setInterval(tick, 500);
+    return () => window.clearInterval(t);
+  }, []);
   const toggle = (key: AudioPrefKey) => {
     unlockAudio();
     setPref(key, !prefs[key]);
@@ -22,41 +32,57 @@ export function AudioSettings() {
   };
   return (
     <div className="space-y-2" role="group" aria-label="Audio settings">
-      {AUDIO_ROWS.map((row) => (
-        <div key={row.key} className="flex items-center justify-between gap-3 border-[2px] border-ink bg-white p-2">
-          <div>
-            <div className="font-extrabold uppercase">{row.label}</div>
-            <div className="text-[12px]">{row.help}</div>
+      {AUDIO_ROWS.map((row) => {
+        const on = prefs[row.key] && (row.key === "master" || prefs.master);
+        const id = `vol-${row.key}`;
+        return (
+          <div key={row.key} className="border-[2px] border-ink bg-white p-2" data-audio-row={row.key}>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor={id} className="min-w-0">
+                <span className="block font-extrabold uppercase">{row.label}</span>
+                <span className="block text-[12px]">{row.help}</span>
+              </label>
+              <button
+                type="button"
+                className="btn btn-gray btn-toggle btn-small"
+                style={{ minWidth: 64 }}
+                aria-pressed={prefs[row.key]}
+                aria-label={`${row.label}: ${prefs[row.key] ? "on" : "off"}`}
+                disabled={row.key !== "master" && !prefs.master}
+                onClick={() => toggle(row.key)}
+              >
+                {prefs[row.key] ? "On" : "Off"}
+              </button>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                id={id}
+                type="range"
+                className="pixel-range"
+                min={0}
+                max={100}
+                step={5}
+                value={volumes[row.key]}
+                disabled={!on}
+                aria-valuetext={`${volumes[row.key]} percent`}
+                style={{ ["--fill" as string]: `${volumes[row.key]}%` }}
+                onPointerDown={() => unlockAudio()}
+                onKeyDown={() => unlockAudio()}
+                onChange={(e) => setVolume(row.key, Number(e.target.value))}
+                onPointerUp={() => {
+                  if (row.key === "sfx" || row.key === "master") playSound("tutorial");
+                }}
+              />
+              <output htmlFor={id} className="w-[44px] text-right text-[13px] font-extrabold tabular-nums" data-testid={`vol-${row.key}-value`}>
+                {volumes[row.key]}%
+              </output>
+            </div>
           </div>
-          <button
-            type="button"
-            className="btn btn-gray btn-toggle btn-small"
-            style={{ minWidth: 72 }}
-            aria-pressed={prefs[row.key]}
-            aria-label={`${row.label}: ${prefs[row.key] ? "on" : "off"}`}
-            disabled={!prefs.master}
-            onClick={() => toggle(row.key)}
-          >
-            {prefs[row.key] ? "On" : "Off"}
-          </button>
-        </div>
-      ))}
-      <div className="flex items-center justify-between gap-3 border-[2px] border-ink bg-white p-2">
-        <div>
-          <div className="font-extrabold uppercase">All sound</div>
-          <div className="text-[12px]">Off mutes music, ambience and effects.</div>
-        </div>
-        <button
-          type="button"
-          className="btn btn-gray btn-toggle btn-small"
-          style={{ minWidth: 72 }}
-          aria-pressed={prefs.master}
-          aria-label={`All sound: ${prefs.master ? "on" : "off"}`}
-          onClick={() => toggle("master")}
-        >
-          {prefs.master ? "On" : "Off"}
-        </button>
-      </div>
+        );
+      })}
+      <p className="text-[12px]" data-testid="now-playing" data-playing={now?.playing ? "yes" : "no"} data-time={now ? now.time.toFixed(1) : "0"} data-volume={now ? now.volume.toFixed(3) : "0"} data-track={now?.track ?? ""}>
+        {now?.playing ? `♪ Now playing: ${now.track}` : "♪ Music is paused."}
+      </p>
     </div>
   );
 }

@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useLayoutEffect, useState } from "react";
+import { MEMORIAL_PHOTO, MEMORIAL_TEXT, OPENING } from "@/data/memorial";
+import { playSound } from "@/lib/sound";
 import { ROCKET } from "./Cutscene";
 import { LaikaFrames } from "./LaikaSprite";
 import { C, dome, px, type Px } from "./pixel/moduleArt";
@@ -81,31 +84,47 @@ const MENU: { label: string; icon: IconName; key: "howto" | "science" | "setting
 
 export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onHowTo, onScience, onCredits, onSettings, onWatchIntro }: Props) {
   const handlers = { howto: onHowTo, science: onScience, settings: onSettings, credits: onCredits };
+  const phase = useOpening();
+  const opening = phase !== "ready";
   return (
-    <main className="title-screen">
+    <main className={`title-screen${opening ? " title-opening" : ""}`} data-opening={phase}>
+      {phase === "memorial" && <Memorial />}
       <section className="title-scene md:order-2" aria-label="LAIKA: Mission Red Planet">
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" shapeRendering="crispEdges" aria-hidden="true">
           {px(SCENE, "s")}
-          <g transform="translate(214 62) scale(3)">{px(ROCKET, "r")}</g>
           <rect x={208} y={182} width={84} height={4} fill={C.rock} fillOpacity={0.5} />
-          <g transform="translate(118 110) scale(2.8)">
+          {/* The rocket comes down during the opening and rests exactly here. */}
+          <g className="title-rocket">
+            <g className="title-flame">
+              <rect x={244} y={182} width={18} height={6} fill="#f2ca76" />
+              <rect x={248} y={188} width={10} height={6} fill="#e0903f" />
+            </g>
+            <g transform="translate(214 62) scale(3)">{px(ROCKET, "r")}</g>
+          </g>
+          <g className="title-dust" fill="#e7b98a">
+            <rect className="title-dust-l" x={196} y={180} width={10} height={4} />
+            <rect className="title-dust-l" x={184} y={176} width={6} height={4} />
+            <rect className="title-dust-r" x={296} y={180} width={10} height={4} />
+            <rect className="title-dust-r" x={308} y={176} width={6} height={4} />
+          </g>
+          <g transform="translate(118 110) scale(2.8)" className="title-reveal">
             <rect x={5} y={25} width={16} height={2} fill={C.rock} fillOpacity={0.45} />
             <g className="laika-bob">
               <LaikaFrames mood="happy" />
             </g>
           </g>
         </svg>
-        <div className="title-logo">
+        <div className="title-logo title-reveal">
           <h1>LAIKA</h1>
           <p>— MISSION: RED PLANET —</p>
         </div>
-        <p className="absolute inset-x-0 bottom-0 bg-[rgba(20,28,50,0.82)] px-3 py-1 text-center text-[11px] text-cream">
+        <p className="title-reveal absolute inset-x-0 bottom-0 bg-[rgba(20,28,50,0.82)] px-3 py-1 text-center text-[11px] text-cream">
           <strong>This story is fiction.</strong> The real Laika flew on Sputnik 2 in 1957 and did not survive. A student project, not
           affiliated with or endorsed by NASA.
         </p>
       </section>
 
-      <nav className="menu-panel md:order-1" aria-label="Main menu">
+      <nav className="menu-panel title-reveal md:order-1" aria-label="Main menu" inert={opening}>
         <div className="flex items-center justify-center gap-2 pb-1" aria-hidden="true">
           <span style={{ width: 34, height: 4, background: "#c9463b", boxShadow: "0 7px 0 #e0903f, 0 14px 0 #c9463b" }} />
           <span className="rounded-full border-[3px] border-cream p-[6px]">
@@ -149,5 +168,59 @@ export function MainMenu({ hasSave, savedSol, onStart, onRandom, onContinue, onH
         </div>
       </nav>
     </main>
+  );
+}
+
+const SESSION_KEY = "laika-mission-red-planet/opening-seen";
+type OpeningPhase = "memorial" | "landing" | "ready";
+
+/**
+ * Opening sequence, once per browser session: 2 s memorial, the rocket lands
+ * at 3 s, the menu is ready at 3.5 s. All timers are cleared on unmount.
+ */
+function useOpening(): OpeningPhase {
+  const [phase, setPhase] = useState<OpeningPhase>("memorial");
+  // Before the first paint: skip everything if this session has already seen it.
+  const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+  useIsoLayoutEffect(() => {
+    let seen = false;
+    try {
+      seen = window.sessionStorage.getItem(SESSION_KEY) === "1";
+    } catch {
+      // Storage blocked: just play it.
+    }
+    if (seen) {
+      setPhase("ready");
+      return;
+    }
+    try {
+      window.sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      // Not remembered; harmless.
+    }
+    const timers = [
+      window.setTimeout(() => setPhase("landing"), OPENING.memorialEnd),
+      window.setTimeout(() => playSound("boom"), OPENING.rocketLands), // silent until the player has interacted
+      window.setTimeout(() => setPhase("ready"), OPENING.menuReady),
+    ];
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, []);
+  return phase;
+}
+
+/** A quiet tribute to the real Laika. No button: it passes on its own. */
+function Memorial() {
+  const [failed, setFailed] = useState(false);
+  const photo = failed ? null : MEMORIAL_PHOTO;
+  return (
+    <div className="memorial" role="img" aria-label={MEMORIAL_TEXT} data-testid="memorial">
+      <div className="memorial-inner">
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photo.src} alt={photo.alt} className="memorial-photo" onError={() => setFailed(true)} />
+        )}
+        <p className="memorial-text">{MEMORIAL_TEXT}</p>
+      </div>
+    </div>
   );
 }

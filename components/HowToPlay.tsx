@@ -1,5 +1,8 @@
 "use client";
 
+import { MEMORIAL_PHOTO } from "@/data/memorial";
+import { MUSIC_TRACKS } from "@/lib/sound";
+
 import { CONFIG } from "@/game/config";
 import { SCIENCE_DISCLAIMER } from "@/data/science";
 import { TUTORIAL_STAGES } from "@/data/tutorial";
@@ -122,6 +125,20 @@ export function Credits({ onClose }: { onClose: () => void }) {
         <p>
           <strong>Art:</strong> all pixel art is original and drawn in code for this project. No outside art assets or
           fonts are loaded.
+        </p>
+        <p>
+          <strong>Music:</strong> {MUSIC_TRACKS.map((t) => `"${t.title}"`).join(" and ")}, supplied by the project team.
+          Sound effects and the Mars wind are synthesized by the game.
+        </p>
+        <p>
+          <strong>Memorial photograph:</strong>{" "}
+          {MEMORIAL_PHOTO ? (
+            <>
+              {MEMORIAL_PHOTO.credit}. {MEMORIAL_PHOTO.license}. Source: {MEMORIAL_PHOTO.sourceUrl}
+            </>
+          ) : (
+            "not included yet. The opening shows the dedication text only until a photograph with verified reuse rights is added."
+          )}
         </p>
         <p>
           <strong>Science:</strong> see the NASA Science Lab for sources. Game numbers are fictional units.
