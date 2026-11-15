@@ -27,6 +27,9 @@ export function Reveal({ trigger, label, children, side = "below", className = "
   const bubble = useRef<HTMLSpanElement>(null);
   // Horizontal nudge so the bubble never goes past the screen edge (phones).
   const [shift, setShift] = useState(0);
+  // Touch taps toggle on pointer-up. Emulated mouse/focus events from the same
+  // tap are ignored, otherwise the bubble opens and instantly closes again.
+  const touch = useRef(false);
   const id = useId();
   const open = hover || pinned;
 
@@ -79,8 +82,12 @@ export function Reveal({ trigger, label, children, side = "below", className = "
     <span
       ref={wrap}
       className={`reveal ${className}`}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onMouseEnter={() => {
+        if (!touch.current) setHover(true);
+      }}
+      onMouseLeave={() => {
+        if (!touch.current) setHover(false);
+      }}
     >
       <button
         type="button"
@@ -89,9 +96,22 @@ export function Reveal({ trigger, label, children, side = "below", className = "
         aria-expanded={open}
         aria-describedby={open ? id : undefined}
         data-testid={testId}
-        onFocus={() => setHover(true)}
+        onPointerDown={(e) => {
+          touch.current = e.pointerType !== "mouse";
+        }}
+        onPointerUp={(e) => {
+          if (e.pointerType !== "mouse") setPinned((p) => !p);
+        }}
+        onFocus={() => {
+          if (!touch.current) setHover(true);
+        }}
         onBlur={() => setHover(false)}
-        onClick={() => setPinned((p) => !p)}
+        onKeyDown={() => {
+          touch.current = false;
+        }}
+        onClick={() => {
+          if (!touch.current) setPinned((p) => !p);
+        }}
       >
         {trigger}
       </button>

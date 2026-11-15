@@ -17,7 +17,7 @@ import { TUTORIAL_STAGES, TUTORIAL_TRADEOFF_LINE } from "@/data/tutorial";
 import { CONFIG, round1 } from "@/game/config";
 import { difficultyOf } from "@/game/difficulty";
 import { batteryCapacity, canAdvance, effectTotals, simulateSol, solarGeneration } from "@/game/engine";
-import type { GameAction, MissionState, ModuleId, ResourceKey } from "@/game/types";
+import { MODULE_IDS, type GameAction, type MissionState, type ModuleId, type ResourceKey } from "@/game/types";
 import { HowToPlay } from "./HowToPlay";
 import { LaikaSprite } from "./LaikaSprite";
 import { EventOutcomeModal, MissionEventModal } from "./MissionEventModal";
@@ -87,6 +87,15 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   const laika = getLaikaLine(state);
   const nextAction = getNextAction(state);
   const fx = effectTotals(state.effects);
+  // Desktop: the outpost grows to fill the screen height.
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
   const sim = useMemo(() => simulateSol(state), [state]);
   const gate = canAdvance(state);
   const playing = state.status === "playing";
@@ -346,28 +355,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
   );
 
   return (
-    <main className="mx-auto max-w-[1280px] space-y-2 p-2 sm:p-3">
-      {/* REGION A — compact status bar */}
-      <header id="region-status" className="panel flex flex-wrap items-stretch gap-2 p-2" inert={locked("status")}>
-        <div className="panel-dark flex flex-col justify-center px-3 py-1 text-center leading-tight" aria-label={`Sol ${state.sol} of ${state.maxSols}`}>
-          <div className="text-[10px] font-extrabold uppercase tracking-wide">Sol</div>
-          <div className="text-[20px] font-extrabold tabular-nums">
-            {state.sol}
-            <span className="text-[13px]"> / {state.maxSols}</span>
-          </div>
-        </div>
-        <div className="flex flex-col items-center justify-center border-[3px] border-ink bg-cream px-2 text-center leading-tight" aria-label={`Weather today: ${weather.label}`}>
-          <PixelSprite grid={ICONS[weather.icon]} scale={2} />
-          <div className="text-[10px] font-extrabold uppercase">{weather.label}</div>
-        </div>
-        <div id="hud-meters" className="flex min-w-0 items-end" aria-label="Resource meters">
-          <ResourceHud state={state} />
-        </div>
-        <button type="button" className="btn btn-gray btn-small ml-auto self-center" onClick={() => setOverlay("settings")} aria-label="Settings: sound, help and restart">
-          ⚙ Settings
-        </button>
-      </header>
-
+    <main className="mx-auto flex max-w-[1400px] flex-col gap-2 p-2 sm:p-3 lg:h-[100dvh] lg:min-h-[600px]">
       {warnings.length > 0 && (
         <div className="panel px-2 py-1 text-[14px] font-extrabold" role="alert" style={{ background: "#ED695B", color: "#fff" }}>
           {warnings.map((w) => (
@@ -384,10 +372,35 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
         </div>
       )}
 
-      <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0 space-y-2">
+      <div className="grid gap-2 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="flex min-w-0 flex-col gap-2 lg:min-h-0">
+          <div className="flex flex-col gap-2 sm:flex-row lg:min-h-0 lg:flex-1">
+            {/* REGION A — status column beside the outpost (a row on phones) */}
+            <aside
+              id="region-status"
+              className="panel flex shrink-0 gap-2 p-2 sm:w-[164px] sm:flex-col"
+              aria-label="Mission status"
+              inert={locked("status")}
+            >
+              <div className="flex gap-2">
+                <div className="panel-dark flex flex-1 flex-col justify-center px-2 py-1 text-center leading-tight" aria-label={`Sol ${state.sol} of ${state.maxSols}`}>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wide">Sol</div>
+                  <div className="text-[18px] font-extrabold tabular-nums">
+                    {state.sol}
+                    <span className="text-[11px]">/{state.maxSols}</span>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col items-center justify-center border-[3px] border-ink bg-cream px-1 text-center leading-tight" aria-label={`Weather today: ${weather.label}`}>
+                  <PixelSprite grid={ICONS[weather.icon]} scale={2} />
+                  <div className="text-[9px] font-extrabold uppercase">{weather.label}</div>
+                </div>
+              </div>
+              <div id="hud-meters" className="flex min-w-0 flex-1" aria-label="Resource meters">
+                <ResourceHud state={state} />
+              </div>
+            </aside>
           {/* REGION B — the outpost */}
-          <div id="region-scene" className="outpost-frame" inert={locked("scene")}>
+          <div id="region-scene" className="outpost-frame min-w-0 flex-1 self-stretch sm:self-start lg:self-stretch" inert={locked("scene")}>
             <PixelMarsOutpost
               modules={state.modules}
               weather={state.weather}
@@ -403,11 +416,13 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               sheltering={fx.sheltering}
               highlight={null}
               gear={gear}
+              fill={wide}
             />
+          </div>
           </div>
 
           {/* One guidance line + the way forward, always visible */}
-          <section id="region-bar" className="panel flex flex-wrap items-center gap-3 p-2" aria-label="Laika and next step" inert={locked("bar")}>
+          <section id="region-bar" className="panel flex flex-wrap items-center gap-x-3 gap-y-2 p-2" aria-label="Laika and next step" inert={locked("bar")}>
             {/* Laika's words stay hidden behind "!" until hovered, focused or tapped. */}
             <Reveal
               side="right"
@@ -443,6 +458,15 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               <p className="mt-1 text-[12px]">{mission.done ? "Great job! Do anything else you like." : missionWhy(mission)}</p>
             </div>
             <span className="flex items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex h-[34px] w-[34px] items-center justify-center border-[3px] border-ink bg-[#66708c] text-[18px] text-cream"
+                onClick={() => setOverlay("settings")}
+                aria-label="Settings: sound, help and restart"
+                title="Settings"
+              >
+                ⚙
+              </button>
               <Reveal
                 side="above"
                 bubbleWidth={230}
@@ -465,7 +489,8 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
         </div>
 
         {/* REGION C — one tabbed panel */}
-        <section id="region-panel" className="panel self-start" aria-label="Information" inert={locked("panel")}>
+        <section id="region-panel" className="panel lg:relative lg:min-h-0" aria-label="Information" inert={locked("panel")}>
+          <div className="flex flex-col lg:absolute lg:inset-0">
           <div className="tabs" role="tablist" aria-label="Information tabs">
             {TABS.map((t) => (
               <button
@@ -482,7 +507,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
               </button>
             ))}
           </div>
-          <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="p-3" data-tab={tab}>
+          <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="scroll-y min-h-0 flex-1 p-3" data-tab={tab}>
             {tab === "overview" && (
               <div className="space-y-2 text-[14px]">
                 <p>
@@ -511,13 +536,35 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                       </span>
                     ))}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" id="btn-preview" className="btn btn-gray" onClick={openPreview} disabled={!playing}>
-                      Preview Next Sol
-                    </button>
-                    {advanceButton()}
-                  </div>
+                  <button type="button" id="btn-preview" className="btn btn-gray w-full" onClick={openPreview} disabled={!playing}>
+                    Preview Next Sol
+                  </button>
                   {!gate.ok && gate.reason && <div className="mt-1 text-[12px]">{gate.reason}</div>}
+                </div>
+                <div className="border-[3px] border-ink bg-white p-2" data-testid="outpost-glance">
+                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-maroon">Outpost at a glance</div>
+                  <ul className="grid gap-1">
+                    {MODULE_IDS.map((id) => {
+                      const m = state.modules[id];
+                      const low = m.condition < 60;
+                      return (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between gap-1 border-[2px] border-ink px-1 text-left text-[11px] font-bold"
+                            style={{ background: low ? "#F2CA76" : "#FFF1D0" }}
+                            onClick={() => select(id)}
+                            aria-label={`${MODULES[id].name}: level ${m.level}, condition ${Math.round(m.condition)} percent`}
+                          >
+                            <span className="truncate">{MODULES[id].name}</span>
+                            <span className="whitespace-nowrap tabular-nums">
+                              L{m.level} · {Math.round(m.condition)}%{low ? " !" : ""}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
                 <p className="text-[12px]">
                   Difficulty: {difficultyOf(state).label}. {saveOk === false ? "✕ Not saved." : "✓ Saved."}
@@ -588,6 +635,7 @@ export function MissionDashboard({ state, dispatch, saveOk, onRestart }: Props) 
                 </button>
               </div>
             )}
+          </div>
           </div>
         </section>
       </div>

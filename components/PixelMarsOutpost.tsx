@@ -16,6 +16,8 @@ export const SCENE_H = 180;
 const HORIZON = 96;
 /** The dashboard crops the top of the sky so the outpost fills the frame. */
 const VIEW_TOP = 40;
+/** In "fill" mode the scene may grow upward into extra starry sky, never past this. */
+const MAX_UNITS = 360;
 
 /** Top-left corner of each module's 48×40 art box. */
 const POSITIONS: Record<ModuleId, { x: number; y: number }> = {
@@ -125,9 +127,55 @@ const DUST: { x: number; y: number; d: number; w: number }[] = scatter(54, 31).r
 }, []);
 
 /** Sky, mountains and ground only — reused on the title screen. */
+// Extra night sky above the original 320×180 art, used when the scene is taller.
+const DEEP_SKY: Px[] = (() => {
+  const depth = MAX_UNITS - 140;
+  // Stepped bands that blend into the original sky (#141C32 at y=0): no visible seam.
+  const a: Px[] = [
+    [0, -depth, SCENE_W, depth, "#0b1020"],
+    [0, -120, SCENE_W, 120, "#0f1528"],
+    [0, -50, SCENE_W, 50, "#141C32"],
+  ];
+  const r = scatter(160, 77);
+  for (let i = 0; i < 80; i += 2) {
+    a.push([Math.floor(r[i] * SCENE_W), -Math.floor(r[i + 1] * (MAX_UNITS - 140)), 1, 1, i % 10 === 0 ? C.yellow : C.cream]);
+  }
+  return a;
+})();
+
+// Mars' two small moons (lumpy, grey) and the orbiting crew ship that takes Laika
+// to safety in the story. Original pixel art; only seen when the sky is extended.
+const MOONS: Px[] = [
+  // Phobos (bigger, closer)
+  [58, -74, 7, 1, "#9aa6c0"],
+  [56, -73, 11, 4, "#9aa6c0"],
+  [57, -69, 9, 2, "#7d8fb8"],
+  [59, -72, 2, 1, "#66708c"],
+  [63, -70, 2, 1, "#66708c"],
+  // Deimos (tiny, far)
+  [236, -152, 3, 1, "#b9c2d6"],
+  [235, -151, 5, 2, "#9aa6c0"],
+];
+const SHIP: Px[] = [
+  [0, 2, 4, 1, C.blue],
+  [0, 1, 4, 1, C.blueL],
+  [4, 0, 6, 4, C.suit],
+  [4, 3, 6, 1, C.steelL],
+  [6, 1, 2, 1, C.red],
+  [10, 1, 4, 1, C.blueL],
+  [10, 2, 4, 1, C.blue],
+  [5, 4, 1, 1, C.orange],
+];
+
 export const MarsBackdrop = memo(function MarsBackdrop({ weather }: { weather: Weather }) {
   return (
     <g>
+      {px(DEEP_SKY.slice(0, 3), "deep")}
+      <g className="stars">{px(DEEP_SKY.slice(3), "dst")}</g>
+      {px(MOONS, "moon")}
+      <g className="orbit-ship" aria-hidden="true">
+        <g transform="translate(20 -104)">{px(SHIP, "ship")}</g>
+      </g>
       {px(BACKDROP.slice(0, SKY_BANDS.length), "sky")}
       <g className="stars">{px(STARS, "st")}</g>
       {weather !== "STORM" && <g>{px([...dome(252, 56, 5, C.cream), [247, 56, 10, 4, C.cream], [248, 60, 8, 1, C.cream]], "sun")}</g>}
@@ -182,6 +230,8 @@ interface OutpostProps {
   interactive?: boolean;
   /** Module that was just upgraded or repaired (brief flash + floating text). */
   flash?: { id: ModuleId; text: string } | null;
+  /** Grow taller (more sky) to fill the frame instead of leaving empty space. */
+  fill?: boolean;
   /** Brief celebratory bounce after a successful engineering action. */
   laikaBurst?: boolean;
   gear?: GearItem[];
@@ -203,7 +253,26 @@ export function PixelMarsOutpost({
   flash = null,
   laikaBurst = false,
   gear = [],
+  fill = false,
 }: OutpostProps) {
+  // How many scene units tall the view is. 140 = the original framing.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [units, setUnits] = useState(SCENE_H - VIEW_TOP);
+  useEffect(() => {
+    const frame = svgRef.current?.parentElement;
+    if (!fill || !frame || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const { width, height } = frame.getBoundingClientRect();
+      if (width < 10 || height < 10) return;
+      const want = Math.round((SCENE_W * height) / width);
+      setUnits(Math.max(SCENE_H - VIEW_TOP, Math.min(MAX_UNITS, want)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(frame);
+    return () => ro.disconnect();
+  }, [fill]);
+  const top = fill ? SCENE_H - units : VIEW_TOP;
   const [hot, setHot] = useState<ModuleId | null>(null);
   const laikaPos = sheltering ? { x: 240, y: 146 } : { x: 124, y: 148 };
 
@@ -228,8 +297,10 @@ export function PixelMarsOutpost({
 
   return (
     <svg
-      className="outpost-svg"
-      viewBox={`0 ${VIEW_TOP} ${SCENE_W} ${SCENE_H - VIEW_TOP}`}
+      ref={svgRef}
+      className={`outpost-svg${fill ? " outpost-fill" : ""}`}
+      viewBox={`0 ${top} ${SCENE_W} ${SCENE_H - top}`}
+      preserveAspectRatio="xMidYMax meet"
       shapeRendering="crispEdges"
       role="group"
       aria-label={`Mars outpost. Weather: ${weather.toLowerCase()}. Select a module to inspect it.`}
@@ -343,13 +414,13 @@ export function PixelMarsOutpost({
       {tip && (
         // Retro status strip: always in the same place, so it never covers a building.
         <g pointerEvents="none" aria-hidden="true">
-          <rect x={58} y={VIEW_TOP + 3} width={204} height={17} fill={C.out} />
-          <rect x={59} y={VIEW_TOP + 4} width={202} height={15} fill={C.navy} />
-          <rect x={59} y={VIEW_TOP + 4} width={202} height={1} fill={C.blueL} />
-          <text x={160} y={VIEW_TOP + 10.5} textAnchor="middle" className="scene-label scene-label-hot">
+          <rect x={58} y={top + 3} width={204} height={17} fill={C.out} />
+          <rect x={59} y={top + 4} width={202} height={15} fill={C.navy} />
+          <rect x={59} y={top + 4} width={202} height={1} fill={C.blueL} />
+          <text x={160} y={top + 10.5} textAnchor="middle" className="scene-label scene-label-hot">
             {MODULES[tip].name.toUpperCase()} · LEVEL {modules[tip].level}
           </text>
-          <text x={160} y={VIEW_TOP + 16.5} textAnchor="middle" className="scene-label scene-tip">
+          <text x={160} y={top + 16.5} textAnchor="middle" className="scene-label scene-tip">
             {MODULES[tip].tip}
           </text>
         </g>

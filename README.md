@@ -128,6 +128,15 @@ the 0.67 mSv/day figure comes from the RAD instrument team (SwRI), not a nasa.go
 the flight but does not itself state that Laika did not survive (a well-documented fact that should get a NASA
 citation if one is required).
 
+### Layout update (compact screen)
+
+The top status bar is gone. Sol, weather and the five resource bars sit in a column to the left of the outpost
+(a row on phones). On desktop the game fills the screen height: the outpost view grows taller into starry sky with
+Mars' two moons and the orbiting crew ship, and the right-hand panel matches the outpost's height and scrolls
+inside. Settings moved to a ⚙ button next to Advance Sol. The Overview tab no longer repeats the Advance button and
+instead lists every building's level and condition. Touch taps on the hidden-number bars were fixed so they open
+on phones.
+
 ## How to demonstrate (about 3 minutes)
 
 Uses the fixed guided seed, so the first sols are the same every time.
