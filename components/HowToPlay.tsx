@@ -80,6 +80,7 @@ export function HowToPlay({ onClose, onReplay }: HowToPlayProps) {
       </ul>
       <h2 className="h-pixel mt-3 text-[14px]">Upgrades and events</h2>
       <ul className="list-disc pl-6 text-[13px]">
+        <li>Every upgrade earns 1 Gear. At 2, 4 and 6 Gears you unlock a small bonus (see the Gears chip beside the outpost).</li>
         <li>Each building has 3 levels. Upgrades cost materials and make the building work better for the rest of the mission.</li>
         <li>Worn or damaged buildings work less well. A repair costs {CONFIG.repairCost} materials and restores {CONFIG.repairAmount}% condition.</li>
         <li>Events give you 2–3 choices. Each shows its cost now and what happens later. You must choose before the sol continues.</li>

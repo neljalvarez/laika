@@ -244,3 +244,15 @@ Review, then merge with a merge commit or squash. Do not force-push shared branc
 - During the tutorial, keyboard focus is limited to the region holding the target, not to the single target control.
 - The Tighten-the-bolts minigame is a timing game; it moves in steps even with reduced motion, and can always be skipped.
 - Daily missions are counted in the debrief but do not change the score.
+
+## Phase 5: cinematics, Laika's voice, Gears and the new title screen
+
+- **Intro cutscene (about 20 seconds).** Starting a new mission plays seven in-engine pixel scenes: the Sputnik 2 capsule, leaving Earth, Earth shrinking in the porthole, Mars, a bumpy (harmless) landing, Laika stepping out, and the title. **Skip Intro** is always visible and focused, **Next ▶** steps one scene at a time, and reduced-motion settings hold each scene still. Continue never plays it; **Watch Intro** on the menu replays it.
+- **Win outro.** Only on a successful or outstanding mission: mission complete, Laika boards her rocket, the real score categories pop in one by one on the flight home, then the final score and grade, then an Earth landing. **Skip Outro** jumps straight to the full debrief, which always follows.
+- **Laika talks.** New lines, opening her bubble and tutorial steps trigger a short mouth animation and a few soft blips (SFX volume applies; no repeats on re-render).
+- **Laika visits upgrades.** After an upgrade she trots to the building, wags and barks, then walks home. Presentation only.
+- **Gears.** Every upgrade earns 1 Gear, shown beside the meters and in the upgrade reveal. 2 Gears: +4 materials once. 4 Gears: repairs fix +10 more. 6 Gears: upgrades cost 2 less. Gears are saved; older saves get Gears equal to upgrades already built.
+- **Title screen.** New left menu panel and a sunset Mars scene with the logo, Laika and her rocket.
+- **Grade.** The debrief now shows a letter grade (A+ 90, A 80, B 70, C 60).
+
+The story is fiction: the real Laika flew on Sputnik 2 in 1957 and did not survive. This project is not affiliated with or endorsed by NASA.

@@ -114,8 +114,8 @@ describe("shared resource status", () => {
 });
 
 describe("sound engine", () => {
-  it("defines all eleven cues with short notes", () => {
-    expect(Object.keys(CUES).length).toBe(11);
+  it("defines every cue with short notes", () => {
+    expect(Object.keys(CUES).length).toBe(16);
     for (const cue of Object.values(CUES)) {
       expect(cue.notes.length).toBeGreaterThan(0);
       const end = Math.max(...cue.notes.map((n) => n.t + n.d));

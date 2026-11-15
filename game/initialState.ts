@@ -69,6 +69,7 @@ function createBaseState(seed: number, tutorial: boolean, difficulty: Difficulty
     failureReason: null,
     notice: null,
     dailyMission: { sol: 1, kind: "safe", done: false },
+    gears: 0,
     missionsDone: [],
     insights: [],
     insightQueue: [],
