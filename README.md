@@ -185,7 +185,7 @@ on phones.
 Every step below was performed in a real browser on 2026-11-15. "Start New Mission" uses the fixed seed 1957, so the
 first sols are the same every time. Open the game in a fresh tab (or a private window) so the opening plays.
 
-1. **Opening (4 s):** the memorial ("In Loving Memory of Laika") fades, the rocket lands, the menu appears.
+1. **Opening (4 s):** the memorial (Laika's photograph and "In Loving Memory of Laika") fades, the rocket lands, the menu appears.
 2. **Mission introduction:** Start New Mission → Normal → keep "Play the training first" ticked → Start Mission.
    Let the Sputnik 2 intro run a few scenes, then press **Skip Intro**. Read the "Your mission" brief → Begin Sol 1.
 3. **Building interaction (training, ~1 min):** Begin Training → click the **Solar Array** → tap a resource bar to
@@ -263,9 +263,9 @@ Re-checked on 2026-11-15. Full details, where each is used and what is real vers
 
 - **Team:** repository owner `neljalvarez`. *Team members and roles: to be filled in by the team.*
 - **Art:** original pixel art drawn in code for this project (see SOURCES.md).
-- **Music:** "Against the Crimson Sky" and "Last Light On The Ridge", supplied by the team (licence to be documented).
+- **Music:** "Against the Crimson Sky" and "Last Light On The Ridge", custom-made for this project.
 - **Sound effects:** synthesized in the browser.
-- **Memorial photograph:** not yet included (see SOURCES.md).
+- **Memorial photograph:** historical photograph of Laika (1957), supplied by the team (see SOURCES.md).
 - **Development:** built with Claude (Anthropic) through Claude Code under the team's direction.
 
 
@@ -291,8 +291,7 @@ Review, then merge with a merge commit or squash. Do not force-push shared branc
 
 ## Known limitations
 
-- **Memorial photograph missing** until the team supplies one with documented reuse rights.
-- **Music licence** for the two supplied tracks is not documented in the repository.
+- The memorial photograph's original photographer and licence are not recorded (team-supplied, team-approved).
 - The public URL has not been verified from this repository.
 - No ESLint configuration exists, so linting is not part of the checks (TypeScript strict mode and tests are).
 - Audio was verified by inspecting playback in an automated browser, not by listening.

@@ -127,14 +127,15 @@ export function Credits({ onClose }: { onClose: () => void }) {
           fonts are loaded.
         </p>
         <p>
-          <strong>Music:</strong> {MUSIC_TRACKS.map((t) => `"${t.title}"`).join(" and ")}, supplied by the project team.
+          <strong>Music:</strong> {MUSIC_TRACKS.map((t) => `"${t.title}"`).join(" and ")}, custom-made for this project by
+          the team.
           Sound effects and the Mars wind are synthesized by the game.
         </p>
         <p>
           <strong>Memorial photograph:</strong>{" "}
           {MEMORIAL_PHOTO ? (
             <>
-              {MEMORIAL_PHOTO.credit}. {MEMORIAL_PHOTO.license}. Source: {MEMORIAL_PHOTO.sourceUrl}
+              {MEMORIAL_PHOTO.credit}. {MEMORIAL_PHOTO.license}.
             </>
           ) : (
             "not included yet. The opening shows the dedication text only until a photograph with verified reuse rights is added."
