@@ -223,6 +223,10 @@ a {
   height: auto;
   display: block;
 }
+.outpost-svg.outpost-fill {
+  height: 100%;
+  background: #0f1528;
+}
 .scene-label {
   font-family: var(--font-pixel);
   font-size: 5px;
@@ -286,7 +290,7 @@ a {
 }
 .reveal-bubble {
   position: absolute;
-  z-index: 30;
+  z-index: 60; /* above the tutorial dimming so revealed numbers stay readable */
   display: block;
   padding: 8px 10px;
   font-size: 13px;
@@ -297,15 +301,34 @@ a {
 }
 .vmeters {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  height: 64px;
+}
+@media (min-width: 640px) {
+  .vmeters {
+    height: 100%;
+    min-height: 150px;
+  }
+}
+.vmeters > .reveal {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.vmeters > .reveal > .reveal-trigger {
+  width: 100%;
+  height: 100%;
 }
 .vmeter {
   display: flex;
   flex-direction: column;
   align-items: center;
+  height: 100%;
   gap: 3px;
-  padding: 3px 4px;
+  padding: 3px 1px;
+  width: 100%;
   background: var(--color-navy);
   border: 3px solid var(--color-ink);
   box-shadow: inset 0 0 0 2px #3f4963;
@@ -316,13 +339,15 @@ a {
 }
 .vmeter-bar {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
-  width: 14px;
+  width: 12px;
 }
 .vmeter-seg {
   display: block;
-  height: 4px;
+  flex: 1;
+  min-height: 2px;
   background: #2c3550;
 }
 .bubble-badge {
@@ -564,6 +589,10 @@ a {
   100% { transform: translateY(0); }
 }
 
+@keyframes orbit {
+  from { transform: translateX(-40px); }
+  to { transform: translateX(340px); }
+}
 @keyframes badge-pop {
   0%, 59.9% { transform: translateY(0); }
   60%, 79.9% { transform: translateY(-3px); }
@@ -572,6 +601,7 @@ a {
 
 @media (prefers-reduced-motion: no-preference) {
   .bubble-badge { animation: badge-pop 1.2s steps(1, end) infinite; }
+  .orbit-ship { animation: orbit 70s steps(380, end) infinite; }
   .laika-frame-a { animation: frame-a 0.9s infinite; }
   .laika-frame-b { animation: frame-b 0.9s infinite; }
   .laika-idle .laika-frame-a { animation: wag-a 4.2s infinite; }

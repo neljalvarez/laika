@@ -36,6 +36,7 @@ function Meter({ id, icon, label, value, max, color, status, hint, delta, goodWh
       className="vmeter-wrap"
       label={`${label}: ${value} of ${max}, ${status.word}${deltaText ? `, ${deltaText}` : ""}`}
       testId={`meter-${id}`}
+      side="right"
       bubbleWidth={190}
       trigger={
         <span className={`vmeter${status.level === "bad" ? " meter-bad" : ""}`} data-meter={id} data-value={value}>
