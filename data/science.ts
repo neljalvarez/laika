@@ -1,5 +1,5 @@
 // NASA Science Lab cards. Every observed fact below was checked against the
-// linked official source on 2026-11-14. "observed" = what the source reports;
+// linked official source on 2026-11-14 and re-checked on 2026-11-15. "observed" = what the source reports;
 // "simplified" = what our fictional game does with the idea.
 // Game numbers are fictional units and are never NASA measurements.
 import type { IconName } from "@/components/pixel/sprites";
@@ -138,7 +138,7 @@ export const SCIENCE_CARDS: ScienceCard[] = [
     simple:
       "On Mars there is no repair shop. Engineers plan for failures, choose systems that keep working in bad weather, and decide carefully where limited supplies go.",
     observed:
-      "In its 2024 Moon to Mars architecture review, NASA chose nuclear fission as the main power source for future crewed Mars missions. A main reason: global dust storms can cut the sunlight reaching solar panels for weeks or months.",
+      "In its 2024 Moon to Mars architecture review, NASA chose nuclear fission as the main power source for future crewed Mars missions. One reason: atmospheric dust can reduce the sunlight that reaches solar arrays, and long dust storms would cut solar power for a long time.",
     simplified:
       "Our outpost uses solar power only, and has one build per sol. Choosing between upgrading and repairing is our simple version of a real engineering trade-off.",
     mechanic: "The Engineering tab (one upgrade or repair per sol), wear on buildings, and limited materials.",

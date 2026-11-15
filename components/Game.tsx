@@ -68,7 +68,9 @@ export function Game() {
     const saved = loadMission();
     if (saved) {
       setIntroDone(true);
-      setOutroDone(true);
+      // Only a mission that had already ended skips the outro; a mission still
+      // in progress gets it when it is won after Continue.
+      setOutroDone(saved.status !== "playing" && saved.status !== "intro");
       dispatch({ type: "LOAD", state: saved });
     }
     else {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeLayout } from "@/components/PixelMarsOutpost";
+import { computeLayout, walkRoute } from "@/components/PixelMarsOutpost";
 import { channelGain, MUSIC_TRACKS, type AudioPrefs, type AudioVolumes } from "@/lib/sound";
 import { MEMORIAL_TEXT, OPENING } from "@/data/memorial";
 import { MODULE_IDS } from "@/game/types";
@@ -43,6 +43,30 @@ describe("outpost camera", () => {
         expect(spot.x).toBeGreaterThanOrEqual(l.vx);
         expect(spot.x + 26).toBeLessThanOrEqual(l.vx + l.vw);
         expect(spot.y + 27).toBeLessThanOrEqual(l.vy + l.vh);
+      }
+    }
+  });
+});
+
+describe("Laika's walking routes", () => {
+  it("never pass over a building on the way to any building and back", () => {
+    for (const [w, h] of FRAMES) {
+      const l = computeLayout(w, h);
+      for (const id of MODULE_IDS) {
+        for (const back of [false, true]) {
+          const pts = [back ? l.visit[id] : l.home, ...walkRoute(l, l.home, id, back)];
+          for (let i = 1; i < pts.length; i++) {
+            for (let t = 0; t <= 1; t += 0.05) {
+              const feetX = pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t + 13;
+              const feetY = pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t + 26;
+              for (const other of MODULE_IDS) {
+                const b = l.pos[other];
+                const over = feetX > b.x + 6 && feetX < b.x + 42 && feetY > b.y + 6 && feetY < b.y + 34;
+                expect(over, `${w}x${h} ${id} ${back ? "back" : "go"} crosses ${other}`).toBe(false);
+              }
+            }
+          }
+        }
       }
     }
   });
