@@ -38,6 +38,8 @@ export interface OutpostLayout {
   visit: Record<ModuleId, { x: number; y: number }>;
   home: { x: number; y: number };
   shelter: { x: number; y: number };
+  /** Y of the open ground between the two rows, where Laika can walk without crossing a building. */
+  lane: number;
 }
 
 const GRID: ModuleId[][] = [
@@ -66,7 +68,18 @@ export function computeLayout(width: number, height: number): OutpostLayout {
   );
   const home = { x: pos.battery.x + 47, y: pos.battery.y + 24 };
   visit.battery = { x: pos.battery.x + 34, y: pos.battery.y + 24 }; // home is beside it already
-  return { vx, vy, vw, vh, pos, visit, home, shelter: { x: pos.shelter.x - 25, y: pos.shelter.y + 22 } };
+  const lane = Math.round((rows[0] + 54 + rows[1]) / 2) - 26;
+  return { vx, vy, vw, vh, pos, visit, home, shelter: { x: pos.shelter.x - 25, y: pos.shelter.y + 22 }, lane };
+}
+
+type Pt = { x: number; y: number };
+/** Waypoints from `from` to `to`: top-row buildings are reached along the open lane between the rows. */
+export function walkRoute(l: OutpostLayout, from: Pt, id: ModuleId, back = false): Pt[] {
+  const to = l.visit[id];
+  if (!GRID[0].includes(id)) return [back ? from : to];
+  return back
+    ? [{ x: to.x, y: l.lane }, { x: from.x, y: l.lane }, from]
+    : [{ x: from.x, y: l.lane }, { x: to.x, y: l.lane }, to];
 }
 const DRAW_ORDER: ModuleId[] = ["solar", "habitat", "greenhouse", "battery", "lifeSupport", "shelter"];
 
@@ -342,26 +355,33 @@ export function PixelMarsOutpost({
   const [hot, setHot] = useState<ModuleId | null>(null);
   const homePos = sheltering ? layout.shelter : layout.home;
   // Presentation only: go → cheer → back. The upgrade itself is already done.
-  const [trip, setTrip] = useState<{ id: ModuleId; phase: "go" | "cheer" | "back" } | null>(null);
+  const [trip, setTrip] = useState<{ id: ModuleId; phase: "go" | "cheer" | "back"; step: number } | null>(null);
   const visitKey = visit?.key ?? 0;
+  const legs = visit ? walkRoute(layout, homePos, visit.id).length : 1;
   useEffect(() => {
     if (!visit) return;
     const id = visit.id;
-    setTrip({ id, phase: "go" });
-    const t1 = window.setTimeout(() => {
-      setTrip({ id, phase: "cheer" });
+    const n = legs;
+    const leg = 1700 / n;
+    const timers: number[] = [];
+    const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+    setTrip({ id, phase: "go", step: 0 });
+    for (let i = 1; i < n; i++) at(i * leg, () => setTrip({ id, phase: "go", step: i }));
+    at(1700, () => {
+      setTrip({ id, phase: "cheer", step: 0 });
       playSound("woof");
-    }, 1700);
-    const t2 = window.setTimeout(() => setTrip({ id, phase: "back" }), 3200);
-    const t3 = window.setTimeout(() => setTrip(null), 4900);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      window.clearTimeout(t3);
-    };
+    });
+    for (let i = 0; i < n; i++) at(3200 + i * leg, () => setTrip({ id, phase: "back", step: i }));
+    at(4900, () => setTrip(null));
+    return () => timers.forEach((t) => window.clearTimeout(t));
     // Only a new visit key starts a trip.
   }, [visitKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const laikaPos = trip && trip.phase !== "back" ? layout.visit[trip.id] : homePos;
+  const laikaPos = !trip
+    ? homePos
+    : trip.phase === "cheer"
+      ? layout.visit[trip.id]
+      : walkRoute(layout, homePos, trip.id, trip.phase === "back")[trip.step] ?? homePos;
+  const legMs = trip && trip.phase !== "cheer" ? Math.round(1700 / walkRoute(layout, homePos, trip.id).length) - 60 : 1600;
   const tripWalking = trip !== null && trip.phase !== "cheer";
   const cheering = trip?.phase === "cheer";
 
@@ -375,7 +395,8 @@ export function PixelMarsOutpost({
     const timer = window.setTimeout(() => setWalking(false), 1700);
     return () => window.clearTimeout(timer);
   }, [sheltering]);
-  const tip = hot ?? highlight;
+  // Touch screens have no hover, so the selected building keeps its name strip.
+  const tip = hot ?? highlight ?? selected;
 
   const onKey = (e: KeyboardEvent<SVGGElement>, id: ModuleId) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -493,7 +514,10 @@ export function PixelMarsOutpost({
         );
       })}
 
-      <g className="laika-walker" style={{ transform: `translate(${laikaPos.x}px, ${laikaPos.y}px)` }}>
+      <g
+        className="laika-walker"
+        style={{ transform: `translate(${laikaPos.x}px, ${laikaPos.y}px)`, transitionDuration: `${legMs}ms` }}
+      >
         <rect x={5} y={25} width={16} height={2} fill={C.rock} fillOpacity={0.45} />
         <g
           className={mood === "celebrate" ? "laika-hop" : laikaBurst || cheering ? "laika-hop-brief" : walking || tripWalking ? undefined : "laika-bob"}

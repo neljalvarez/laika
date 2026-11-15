@@ -10,13 +10,56 @@ crew over 10 sols.
 > game imagines a kinder ending. It is a student project and is **not affiliated with or endorsed by NASA**. Every
 > number in the game is a fictional game unit, not a measurement.
 
+- **Public game URL:** not verified yet. (Add the Vercel URL here once the team has deployed and opened it.)
+- **Space Apps challenge:** *team to fill in the exact challenge name.*
+- **Sources and credits:** see [SOURCES.md](SOURCES.md).
+
+## The educational problem
+
+Living on Mars is an engineering problem: power, air and water, food and radiation protection all compete for the
+same limited supplies, and the weather can take power away for days. These trade-offs are hard to feel from a
+textbook. LAIKA lets children make the decisions themselves and see the results one sol at a time.
+
+**Audience:** children aged 7–12, playing alone or in a classroom, on an ordinary laptop, tablet or phone. No
+account, no download.
+
+**Learning objectives.** After a mission a player should be able to say:
+
+1. Solar panels need sunlight, and Martian dust can take it away (so we store energy in batteries).
+2. Air and water on a base must be recycled, and broken equipment recycles less.
+3. Growing food takes power and time, so it has to start early.
+4. Mars gets more space radiation than Earth, and shielding reduces exposure.
+5. Engineers cannot build everything: every choice is a trade-off, and repairing is different from upgrading.
+6. Which parts of the game are real NASA findings and which are simplified game rules.
+
+## How the game plays
+
+- 10 sols (Mars days). Each sol you may **upgrade or repair one building**, set the **greenhouse** to OFF / LOW /
+  HIGH, answer any **emergency** (dust storm, solar particle warning, recycler failure, dusty panels, habitat leak,
+  lamp fault, supply drone), then **Advance Sol**.
+- Six buildings, three levels each: Solar Array, Battery Station, Habitat, Life Support, Radiation Shelter,
+  Greenhouse. Every upgrade changes a real game value (for example Life Support recycles 5 → 8 → 11 per sol).
+- **Gears:** each upgrade earns one. 2 Gears give +4 materials once, 4 make repairs stronger, 6 make upgrades cheaper.
+- Easy / Normal / Hard change starting materials, deliveries, event frequency and dust.
+- The mission ends early (Laika is always flown to safety) if life support runs out, power fails or food runs out
+  for 2 sols in a row, or the radiation hazard reaches 100. Otherwise a 100-point score and a grade.
+- Story: a 2-second memorial for the real Laika, a 20-second intro, a guided tutorial, and a return-home outro
+  after a win. Intro, tutorial and outro can all be skipped.
+
+## Technology
+
+Next.js 15 (App Router, static page), React 19, TypeScript (strict), Tailwind CSS 4, Vitest. The game engine in
+`game/` is plain TypeScript with no React. Saves live in the browser's `localStorage`; nothing is sent anywhere.
+No backend, accounts, tracking, cookies or environment variables.
+
 ## Run it
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
 npm run typecheck  # strict TypeScript
-npm test           # Vitest unit tests for the game engine
+npm test           # Vitest unit tests (engine, layout, audio, release checks)
+BALANCE=1 npx vitest run tests/balance-report.test.ts   # optional: 8 strategies × 300 seeds × 3 difficulties
 npm run build      # production build
 ```
 
@@ -137,21 +180,31 @@ inside. Settings moved to a ⚙ button next to Advance Sol. The Overview tab no 
 instead lists every building's level and condition. Touch taps on the hidden-number bars were fixed so they open
 on phones.
 
-## How to demonstrate (about 3 minutes)
+## How to demonstrate (about 4 minutes)
 
-Uses the fixed guided seed, so the first sols are the same every time.
+Every step below was performed in a real browser on 2026-11-15. "Start New Mission" uses the fixed seed 1957, so the
+first sols are the same every time. Open the game in a fresh tab (or a private window) so the opening plays.
 
-1. **Start New Mission → Normal → keep "Play the training first" ticked → Start Mission.** Press Next twice to show
-   the "Your mission" brief, then Begin Sol 1.
-2. **Training (≈1 min):** Begin Training → click the Solar Array → hover a bar to reveal its number → Next → click
-   the Greenhouse → pick LOW → Next → Preview Next Sol → Back → Advance Sol.
-3. **Sol 2 splash:** "Sol 1 survived!" and Laika's first gear (Mission patch). Continue past the short report.
-4. **Emergency:** Greenhouse Lamp Fault. Point out Cost / Effect now / Engineering idea. Choose "Divert power to
-   restart" and read the one-line result.
-5. **Today's mission: Upgrade the Life Support.** Click Life Support → "Why does this matter?" → Open science card
-   (ISS water recycling) → close → "Upgrade or repair" → Upgrade → show "Before you pay" → Build → play Match the
-   lights → see the reveal (recycling 5 → 8 per sol) and "Daily mission complete".
-6. Hover Laika's "!" to read her line, dismiss the Engineering insight, open the Science tab to show insights found.
+1. **Opening (4 s):** the memorial ("In Loving Memory of Laika") fades, the rocket lands, the menu appears.
+2. **Mission introduction:** Start New Mission → Normal → keep "Play the training first" ticked → Start Mission.
+   Let the Sputnik 2 intro run a few scenes, then press **Skip Intro**. Read the "Your mission" brief → Begin Sol 1.
+3. **Building interaction (training, ~1 min):** Begin Training → click the **Solar Array** → tap a resource bar to
+   show its number → Next → click the **Greenhouse** → LOW → Next → **Preview Next Sol** → Back to planning →
+   **Advance Sol**.
+4. **Environmental engineering decision (Sol 2):** the *Greenhouse Lamp Fault* appears. Point out each choice's cost,
+   effect now and engineering idea. Choose **Divert power to restart** and read the result.
+5. **Upgrade with a measurable benefit:** click **Life Support** → "Why does this matter?" → **Open science card**
+   (real ISS water-recycling data, with "how our game simplifies it") → close → Upgrade or repair → Upgrade (14) →
+   Build → play or skip the mini-game. The reveal shows recycling **5 → 8 per sol**, materials 60 → 46 and **+1
+   Gear**. Laika walks over to the building and cheers.
+6. **Resource management:** open the Overview tab: *If you advance now* shows the next sol's changes before you
+   commit. Advance and read the itemised sol report.
+7. **NASA science content:** main menu → **Science Lab** (six cards, each with the real finding, the source link, and
+   what the game simplifies).
+8. **Mission analytics:** for a quick ending, choose Settings → Restart, start a Hard mission without training, and
+   set the Greenhouse to OFF and keep advancing without building: the mission ends early and shows the full debrief (score by category, best
+   decision, what to improve). A winning run (≈10 min) instead plays the return-home outro with the grade reveal.
+
 
 ## Project layout
 
@@ -194,24 +247,27 @@ Formulas are documented at the top of `game/scoring.ts` and explained on the deb
 
 ## Science sources
 
-Checked on 2026-11-14. Shown in the in-game Science Lab with "what was observed" kept separate from "what our game
-simplifies".
+Re-checked on 2026-11-15. Full details, where each is used and what is real versus game rules: [SOURCES.md](SOURCES.md).
 
-| Topic | Source | Figures used |
-| --- | --- | --- |
-| Radiation (Curiosity RAD) | [NASA JPL news, 2013](https://www.jpl.nasa.gov/news/data-from-nasa-rovers-voyage-to-mars-aids-planning/) | ~1.8 mSv/day during cruise |
-| Radiation on the surface | [SwRI RAD team release, Dec 2013](https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars) | ~0.67 mSv/day, Aug 2012 – Jun 2013 |
-| Dust and solar power (Opportunity) | [NASA JPL news, Aug 2018](https://www.jpl.nasa.gov/news/six-things-about-opportunitys-recovery-efforts/) | tau 10.8 on 10 Jun 2018; typical ~0.5; needed < 2.0 |
-| Water recycling (ISS ECLSS) | [NASA, Jun 2023](https://www.nasa.gov/missions/station/iss-research/nasa-achieves-water-recovery-milestone-on-international-space-station) | 98% recovery, up from 93–94% |
-| The real Laika | [NASA GSFC StarChild](https://starchild.gsfc.nasa.gov/docs/StarChild/space_level2/laika.html) | First animal in orbit, Sputnik 2, 3 Nov 1957 |
+| Topic | Source |
+| --- | --- |
+| Dust and solar power (Opportunity, 2018) | [NASA JPL](https://www.jpl.nasa.gov/news/six-things-about-opportunitys-recovery-efforts/) |
+| Radiation in cruise (Curiosity RAD) | [NASA JPL](https://www.jpl.nasa.gov/news/data-from-nasa-rovers-voyage-to-mars-aids-planning/) |
+| Radiation on the surface | [SwRI RAD team](https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars) |
+| Water recycling (ISS) | [NASA](https://www.nasa.gov/missions/station/iss-research/nasa-achieves-water-recovery-milestone-on-international-space-station) |
+| Growing food (Veggie) | [NASA](https://www.nasa.gov/mission_pages/station/research/news/veggie) |
+| Mars surface power decision | [NASA (PDF)](https://www.nasa.gov/wp-content/uploads/2024/12/acr24-mars-surface-power-decision.pdf) |
+| The real Laika | [NASA GSFC StarChild](https://starchild.gsfc.nasa.gov/docs/StarChild/space_level2/laika.html) |
 
-**Still to verify by the team**
+## Credits
 
-- Which of these (if any) appear on the official Resources page of *your selected* Space Apps challenge. Swap in a
-  listed dataset if required for eligibility.
-- The 0.67 mSv/day surface figure is cited from the instrument team's (SwRI) release rather than a nasa.gov page.
-- The StarChild page confirms the flight and date; that Laika did not survive is standard history but is not
-  spelled out on that page.
+- **Team:** repository owner `neljalvarez`. *Team members and roles: to be filled in by the team.*
+- **Art:** original pixel art drawn in code for this project (see SOURCES.md).
+- **Music:** "Against the Crimson Sky" and "Last Light On The Ridge", supplied by the team (licence to be documented).
+- **Sound effects:** synthesized in the browser.
+- **Memorial photograph:** not yet included (see SOURCES.md).
+- **Development:** built with Claude (Anthropic) through Claude Code under the team's direction.
+
 
 ## Team workflow
 
@@ -233,17 +289,20 @@ Review, then merge with a merge commit or squash. Do not force-push shared branc
 3. Framework preset: Next.js. Leave build settings at their defaults. No environment variables.
 4. Deploy. Every later push gets its own preview URL.
 
-## Known limits
+## Known limitations
 
-- All audio is synthesized in the browser (Web Audio). There are on/off switches but no volume sliders.
-- Laika walks only when moving to or from the shelter; she is otherwise a stationary companion.
-- On phones the outpost scales down; modules stay tappable and the Workshop table offers the same selection.
-- Art is drawn in code as SVG pixel rectangles, in the palette and shapes of the team's style sheet. It is not a
-  frame-for-frame copy of that sheet (Laika has six moods with two frames each, a blink layer and a 2-frame walk).
-- No achievements.
+- **Memorial photograph missing** until the team supplies one with documented reuse rights.
+- **Music licence** for the two supplied tracks is not documented in the repository.
+- The public URL has not been verified from this repository.
+- No ESLint configuration exists, so linting is not part of the checks (TypeScript strict mode and tests are).
+- Audio was verified by inspecting playback in an automated browser, not by listening.
+- Saves are per browser and per device (no accounts by design). Clearing site data erases progress.
+- The Habitat upgrade has the smallest effect (life support use 8 → 7 → 6 per sol). Simulations show a
+  Habitat-heavy plan still wins about 96% of Normal missions, so it was left as a deliberate weaker choice.
 - During the tutorial, keyboard focus is limited to the region holding the target, not to the single target control.
 - The Tighten-the-bolts minigame is a timing game; it moves in steps even with reduced motion, and can always be skipped.
 - Daily missions are counted in the debrief but do not change the score.
+
 
 ## Phase 5: cinematics, Laika's voice, Gears and the new title screen
 

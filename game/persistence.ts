@@ -25,12 +25,15 @@ function browserStorage(): StorageLike | null {
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 
+const STATUSES: readonly string[] = ["intro", "playing", "success", "outstanding", "partial", "failure"];
+
 /** Structural validation so a corrupt or outdated save is never loaded. */
 export function validateSave(data: unknown): data is MissionState {
   if (!isObj(data)) return false;
   if (data.version !== SAVE_VERSION) return false;
   if (!isNum(data.seed) || !isNum(data.rng) || !isNum(data.sol) || !isNum(data.maxSols)) return false;
-  if (typeof data.status !== "string") return false;
+  if (typeof data.status !== "string" || !STATUSES.includes(data.status)) return false;
+  if (data.sol < 1 || data.sol > data.maxSols) return false;
   const r = data.resources;
   if (!isObj(r)) return false;
   for (const k of ["power", "lifeSupport", "materials", "food", "radiation"]) {
@@ -41,6 +44,8 @@ export function validateSave(data: unknown): data is MissionState {
   for (const id of MODULE_IDS) {
     const mod = m[id];
     if (!isObj(mod) || !isNum(mod.level) || !isNum(mod.condition)) return false;
+    // Out-of-range values would index past the level tables and turn meters into NaN.
+    if (![1, 2, 3].includes(mod.level) || mod.condition < 0 || mod.condition > 100) return false;
   }
   return (
     Array.isArray(data.log) &&
