@@ -128,7 +128,7 @@ export function Credits({ onClose }: { onClose: () => void }) {
         </p>
         <p>
           <strong>Music:</strong> “Against the Crimson Sky” (main menu), “Below the Red Horizon” and “Last Light On The Ridge”
-          (gameplay), custom-made for this project by the team ({MUSIC_TRACKS.length} tracks).
+          (gameplay), “Across the Crimson Sands” (successful ending), custom-made for this project by the team ({MUSIC_TRACKS.length} tracks).
           Sound effects and the Mars wind are synthesized by the game.
         </p>
         <p>

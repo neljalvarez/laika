@@ -27,6 +27,8 @@ interface Scene {
   html?: ReactElement;
   /** No background music during this scene. */
   silence?: boolean;
+  /** How long the music takes to fade out when this scene starts (default 0.4 s). */
+  musicFadeMs?: number;
   /** Plain black screen and no caption bar (memorial). */
   black?: boolean;
 }
@@ -862,6 +864,9 @@ function outroScenes(state: MissionState): Scene[] {
     {
       ms: 4500,
       caption: "In our story, Laika finally has a home and a family who love her.",
+      // The ending music fades out over 3.5 s here, so it has fully stopped before the memorial.
+      silence: true,
+      musicFadeMs: 3500,
       art: (
         <g>
           {px(HOME_ROOM, "room")}
@@ -1038,10 +1043,13 @@ function CutscenePlayer({ scenes, title, skipLabel, onDone }: PlayerProps) {
   const next = () => (index + 1 >= scenes.length ? finish() : setIndex(index + 1));
   // Sad scenes and the memorial have no background music.
   const silent = !!scene.silence;
+  const fadeMs = scene.musicFadeMs ?? 400;
   useEffect(() => {
-    setMusicSilenced("cutscene", silent);
-  }, [silent]);
-  useEffect(() => () => setMusicSilenced("cutscene", false), []);
+    setMusicSilenced("cutscene", silent, fadeMs);
+  }, [silent]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Release the silence only after the next screen has chosen its music, so the
+  // ending track can never start up again for a moment on the report screen.
+  useEffect(() => () => void window.setTimeout(() => setMusicSilenced("cutscene", false), 0), []);
 
   return (
     <main className="cutscene" aria-label={title} data-testid="cutscene" data-scene={index} data-black={scene.black ? "true" : undefined}>

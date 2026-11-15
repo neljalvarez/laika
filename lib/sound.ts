@@ -274,7 +274,7 @@ function getContext(): AudioContext | null {
  * other in an endless loop. A single <audio> element exists for the whole app,
  * so switching tabs, opening Settings or advancing a sol never restarts it.
  */
-export type MusicScene = "menu" | "game" | "none";
+export type MusicScene = "menu" | "game" | "ending" | "none";
 /**
  * The team's custom tracks. "Against the Crimson Sky" belongs to the main menu
  * only; gameplay plays "Below the Red Horizon" then "Last Light On The Ridge".
@@ -283,7 +283,11 @@ export const MUSIC_TRACKS: { title: string; src: string; scene: Exclude<MusicSce
   { title: "Against the Crimson Sky", src: "/audio/against-the-crimson-sky.mp3", scene: "menu" },
   { title: "Below the Red Horizon", src: "/audio/below-the-red-horizon.mp3", scene: "game" },
   { title: "Last Light On The Ridge", src: "/audio/last-light-on-the-ridge.mp3", scene: "game" },
+  // Only for the successful ending: fades in as it starts, out while Laika sleeps at home.
+  { title: "Across the Crimson Sands", src: "/audio/across-the-crimson-sands.mp3", scene: "ending" },
 ];
+/** How long each playlist takes to fade in. The ending swells in gently. */
+const FADE_IN_MS: Record<Exclude<MusicScene, "none">, number> = { menu: 800, game: 800, ending: 2500 };
 const playlist = (scene: Exclude<MusicScene, "none">) => MUSIC_TRACKS.filter((t) => t.scene === scene);
 const AMBIENCE_GAIN = 0.03;
 
@@ -304,6 +308,7 @@ const silencers = new Set<string>();
 const resumeAt: Record<Exclude<MusicScene, "none">, { track: number; time: number }> = {
   menu: { track: 0, time: 0 },
   game: { track: 0, time: 0 },
+  ending: { track: 0, time: 0 },
 };
 let musicGen = 0;
 interface AmbienceLayer {
@@ -336,9 +341,10 @@ function fadeMusic(player: MusicPlayer, target: () => number, ms: number, done?:
 }
 
 function loadTrack(player: MusicPlayer, scene: Exclude<MusicScene, "none">): void {
-  if (player.el.src && player.scene !== scene) {
+  if (player.el.src && player.scene !== scene && player.scene !== "ending") {
     resumeAt[player.scene] = { track: player.track, time: player.el.currentTime || 0 };
   }
+  if (scene === "ending") resumeAt.ending = { track: 0, time: 0 };
   const list = playlist(scene);
   const pos = resumeAt[scene];
   player.scene = scene;
@@ -386,7 +392,7 @@ function startMusic(scene: Exclude<MusicScene, "none">): void {
     void player.el
       .play()
       .then(() => {
-        if (player.playing && gen === musicGen) fadeMusic(player, () => Math.min(1, channelGain("music")), 800);
+        if (player.playing && gen === musicGen) fadeMusic(player, () => Math.min(1, channelGain("music")), FADE_IN_MS[scene]);
       })
       .catch(() => {
         player.playing = false;
@@ -405,13 +411,13 @@ function startMusic(scene: Exclude<MusicScene, "none">): void {
   begin();
 }
 
-/** Fades out (~0.4 s) and pauses, never rewinds, so the tune can carry on later. */
-function stopMusic(): void {
+/** Fades out (~0.4 s unless asked otherwise) and pauses, never rewinds, so the tune can carry on later. */
+function stopMusic(fadeMs = 400): void {
   const player = music;
   if (!player || !player.playing) return;
   player.playing = false;
   const gen = ++musicGen;
-  fadeMusic(player, () => 0, 400, () => {
+  fadeMusic(player, () => 0, fadeMs, () => {
     if (!player.playing && gen === musicGen) player.el.pause();
   });
 }
@@ -423,13 +429,19 @@ export function setMusicScene(scene: MusicScene): void {
   syncLayers();
 }
 
-/** Silences (or releases) the music for a named reason, e.g. the memorial. */
-export function setMusicSilenced(reason: string, on: boolean): void {
+/**
+ * Silences (or releases) the music for a named reason, e.g. the memorial.
+ * `fadeMs` sets how slowly the music fades out when silencing.
+ */
+export function setMusicSilenced(reason: string, on: boolean, fadeMs = 400): void {
   if (on === silencers.has(reason)) return;
   if (on) silencers.add(reason);
   else silencers.delete(reason);
+  silenceFadeMs = fadeMs;
   syncLayers();
+  silenceFadeMs = 400;
 }
+let silenceFadeMs = 400;
 
 /** Soft synthesized "wind" (filtered noise) plus a faint equipment hum. Artistic, not a Mars recording. */
 function startAmbience(audio: AudioContext): void {
@@ -520,7 +532,7 @@ function syncLayers(): void {
     const wantAmbience = unlocked && visible && prefs.master && prefs.ambience;
     const audio = wantMusic || wantAmbience ? getContext() : ctx;
     if (wantMusic && musicScene !== "none") startMusic(musicScene);
-    else stopMusic();
+    else stopMusic(silencers.size > 0 ? silenceFadeMs : 400);
     if (wantAmbience && audio) startAmbience(audio);
     else stopAmbience(audio);
   } catch {
@@ -674,6 +686,7 @@ export function resetSoundForTests(): void {
   silencers.clear();
   resumeAt.menu = { track: 0, time: 0 };
   resumeAt.game = { track: 0, time: 0 };
+  resumeAt.ending = { track: 0, time: 0 };
   stopAmbience(null);
   ctx = null;
   sfxBus = null;

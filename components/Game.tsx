@@ -37,11 +37,18 @@ export function Game() {
   useUiSounds();
   useGameSounds(mission);
 
-  // "Against the Crimson Sky" is main-menu music only; every other screen uses the gameplay playlist.
+  // "Against the Crimson Sky" is main-menu music only; "Across the Crimson Sands" plays only during the
+  // successful ending; every other screen uses the gameplay playlist.
   const onMenu = !mission && overlay !== "intro-replay";
+  const wonOutro =
+    !!mission &&
+    (mission.status === "success" || mission.status === "outstanding") &&
+    !mission.reportPending &&
+    !outroDone;
+  const musicScene = onMenu ? "menu" : wonOutro ? "ending" : "game";
   useEffect(() => {
-    setMusicScene(onMenu ? "menu" : "game");
-  }, [onMenu]);
+    setMusicScene(musicScene);
+  }, [musicScene]);
 
   // Detect an existing save after mount (never during server render).
   useEffect(() => {
