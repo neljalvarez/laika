@@ -935,8 +935,11 @@ table.report thead th {
   max-width: 560px;
 }
 .memorial-photo {
-  max-width: 100%;
+  /* The photo is 300 px wide: show it at most 1.5x so it stays clear, never pixelated. */
+  width: min(450px, 86vw);
+  height: auto;
   max-height: 58vh;
+  object-fit: contain;
   border: 2px solid #3a3a3a;
   image-rendering: auto;
 }

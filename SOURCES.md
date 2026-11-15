@@ -46,14 +46,14 @@ not a physical measurement.
 
 | Item | Status |
 |---|---|
-| Photograph of Laika for the "In Loving Memory of Laika" opening | **Missing.** No photograph with verified reuse rights has been added. The memorial shows its text on black until one is. To add it: save the file as `public/memorial/laika.jpg` and fill in source, credit and licence in `data/memorial.ts`; the Credits screen then shows the attribution. |
+| Black-and-white photograph of Laika in her flight harness, 1957 — `public/memorial/laika.jpg` (300 × 221) | Supplied and approved by the project team on 2026-11-15 for the "In Loving Memory of Laika" opening. It is a widely published Soviet-era photograph; the original photographer and its licence are **not recorded** in the repository. Credited in-game on the Credits screen (`data/memorial.ts`). |
 
 ### Music
 
 | Track | File | Source / licence |
 |---|---|---|
-| "Against the Crimson Sky" | `public/audio/against-the-crimson-sky.mp3` | Supplied by the project team. **Origin, author and licence not documented in the repository — the team must confirm it has the right to publish it.** The file has no embedded title/artist/copyright tags. |
-| "Last Light On The Ridge" | `public/audio/last-light-on-the-ridge.mp3` | Same as above. **Unverified.** |
+| "Against the Crimson Sky" | `public/audio/against-the-crimson-sky.mp3` | Custom-made for this project; the team confirmed this on 2026-11-15. |
+| "Last Light On The Ridge" | `public/audio/last-light-on-the-ridge.mp3` | Custom-made for this project; confirmed by the team on 2026-11-15. |
 
 ### Sound effects and ambience
 
@@ -95,9 +95,10 @@ No other open-source code was copied into the project.
 
 ## Open attribution issues
 
-1. **Memorial photograph** — not supplied; must have documented reuse rights before it is added.
-2. **Music licence** — both tracks need a documented source and permission from the team.
-3. **Space Apps challenge resources** — the team should check whether its selected challenge requires sources from
+1. **Memorial photograph** — supplied and approved by the team, but its original photographer and licence are not
+   recorded. If the team can find them (for example on the photo's Wikimedia Commons page), add them to
+   `data/memorial.ts`.
+2. **Space Apps challenge resources** — the team should check whether its selected challenge requires sources from
    that challenge's official Resources page, and add them here if so.
-4. **StarChild page** confirms Laika's flight and date; that she did not survive is standard history but is not
+3. **StarChild page** confirms Laika's flight and date; that she did not survive is standard history but is not
    stated on that page.

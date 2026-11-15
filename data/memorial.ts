@@ -18,7 +18,13 @@ export interface MemorialPhoto {
   sourceUrl: string;
 }
 
-export const MEMORIAL_PHOTO: MemorialPhoto | null = null;
+export const MEMORIAL_PHOTO: MemorialPhoto | null = {
+  src: "/memorial/laika.jpg",
+  alt: "Black-and-white photograph of Laika, the real space dog, wearing her flight harness in 1957.",
+  credit: "Historical photograph of Laika, 1957 (Soviet Union), supplied by the project team",
+  license: "Used with the team's approval; original photographer and licence not recorded",
+  sourceUrl: "supplied by the project team",
+};
 
 export const MEMORIAL_TEXT = "In Loving Memory of Laika";
 /** Timeline of the opening, in milliseconds. */

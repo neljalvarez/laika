@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { preload } from "react-dom";
 import { MEMORIAL_PHOTO, MEMORIAL_TEXT, OPENING } from "@/data/memorial";
 import { playSound } from "@/lib/sound";
 import { ROCKET } from "./Cutscene";
@@ -211,13 +212,20 @@ function useOpening(): OpeningPhase {
 /** A quiet tribute to the real Laika. No button: it passes on its own. */
 function Memorial() {
   const [failed, setFailed] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  if (MEMORIAL_PHOTO) preload(MEMORIAL_PHOTO.src, { as: "image", fetchPriority: "high" });
+  // The page is pre-rendered, so the image can fail before React is listening: check once on mount.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setFailed(true);
+  }, []);
   const photo = failed ? null : MEMORIAL_PHOTO;
   return (
     <div className="memorial" role="img" aria-label={MEMORIAL_TEXT} data-testid="memorial">
       <div className="memorial-inner">
         {photo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo.src} alt={photo.alt} className="memorial-photo" onError={() => setFailed(true)} />
+          <img ref={imgRef} src={photo.src} alt={photo.alt} className="memorial-photo" onError={() => setFailed(true)} />
         )}
         <p className="memorial-text">{MEMORIAL_TEXT}</p>
       </div>
